@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { useCustomization } from '../context/CustomizationContext';
 import { ShieldCheck, Phone, Mail, ArrowUp, FolderGit2, ExternalLink } from 'lucide-react';
 import { GOOGLE_DRIVE_CONFIG } from '../data/mediaAssets';
+import { ZaboraaLogoMark } from './ZaboraaLogo';
 
 export const Footer: React.FC = () => {
   const { siteConfig, setIsBriefingModalOpen, setIsCustomizerOpen, setIsAdminLoginModalOpen, isAdmin } = useCustomization();
@@ -18,12 +19,15 @@ export const Footer: React.FC = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-8 lg:gap-12">
           {/* Col 1: Brand & Bio */}
           <div className="lg:col-span-2 space-y-4">
-            <Link to="/" className="flex items-center gap-2">
-              <div className="w-7 h-7 rounded bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center font-bold text-white text-xs">
-                Z
-              </div>
-              <span className="text-base font-bold text-white tracking-tight">
-                {siteConfig.brand}
+            <Link to="/" className="flex items-center gap-2.5 group">
+              <ZaboraaLogoMark sizeClass="w-8 h-8" />
+              <span className="flex flex-col tracking-tight">
+                <span className="text-sm sm:text-base font-black tracking-tight text-white font-sans group-hover:text-cyan-300 transition-colors">
+                  ZABORAA <span className="text-[10px] font-mono text-cyan-400 font-bold">TECH</span>
+                </span>
+                <span className="text-[8px] font-mono tracking-widest text-slate-500 uppercase">
+                  Cloud Architecture
+                </span>
               </span>
             </Link>
             <p className="text-slate-400 leading-relaxed max-w-sm">

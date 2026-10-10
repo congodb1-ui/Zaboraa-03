@@ -501,7 +501,7 @@ export const DRPlannerPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Right Output: Cost Sizing & Bandwidth Verdict (5 Cols) */}
+        {/* Right Output: Replication Bandwidth & Standby Host Sizing Verdict (5 Cols) */}
         <div className="lg:col-span-5 space-y-6">
           <div className="p-6 rounded-xl bg-slate-900 border border-slate-800 shadow-xl space-y-6">
             <div className="space-y-1">

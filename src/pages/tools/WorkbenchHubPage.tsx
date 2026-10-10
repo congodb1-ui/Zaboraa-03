@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Cpu, FileSpreadsheet, ShieldAlert, CpuIcon, Layers, HardDrive, ArrowRight, CheckCircle2, ExternalLink, FolderGit2, Sparkles, Download } from 'lucide-react';
+import { Cpu, FileSpreadsheet, ShieldAlert, CpuIcon, Layers, HardDrive, ArrowRight, CheckCircle2, ExternalLink, FolderGit2, Sparkles, Download, Network } from 'lucide-react';
 import { GOOGLE_DRIVE_CONFIG } from '../../data/mediaAssets';
 
 export const WorkbenchHubPage: React.FC = () => {
@@ -35,6 +35,22 @@ export const WorkbenchHubPage: React.FC = () => {
         'Identifies stale snapshots, obsolete VMware Tools, and large disks',
         'HCX migration wave grouping & scheduling classification',
         'One-click sample enterprise cluster loader & demo export'
+      ]
+    },
+    {
+      id: 'aria-networks',
+      path: '/tools/aria-networks',
+      icon: Network,
+      title: 'Aria Operations for Networks (vRNI) Data Engine',
+      subtitle: 'Flow Discovery, Application Tiers & NSX DFW Matrix',
+      badge: 'Flow Analytics & Security',
+      accentColor: 'border-cyan-400/50 text-cyan-300 bg-cyan-950/30',
+      description: 'Eliminate migration blind spots through IPFIX flow capture. Map multi-tier application dependencies (Web, App, DB), generate NSX Distributed Firewall zero-trust rules, and export color-coded wave execution spreadsheets.',
+      capabilities: [
+        'Dual ingestion: Embedded 3-tier sample data or manual JSON/CSV upload',
+        'Interactive application topology maps & East-West latency matrix',
+        'Automated NSX Distributed Firewall (DFW) zero-trust recommendations',
+        'Color-coded multi-tab Excel export & Wave Planner synchronization'
       ]
     },
     {

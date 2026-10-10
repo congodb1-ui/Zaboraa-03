@@ -21,9 +21,11 @@ import {
   Film,
   FileText,
   ExternalLink,
-  FolderGit2
+  FolderGit2,
+  Network
 } from 'lucide-react';
 import { GOOGLE_DRIVE_CONFIG } from '../data/mediaAssets';
+import { ZaboraaLogoMark } from './ZaboraaLogo';
 
 export const Navbar: React.FC = () => {
   const location = useLocation();
@@ -73,15 +75,26 @@ export const Navbar: React.FC = () => {
     <header className="sticky top-0 z-40 w-full border-b border-slate-800/80 bg-slate-950/90 backdrop-blur-md">
       <div
         ref={navRef}
-        className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-6"
+        className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4 sm:gap-6 relative"
       >
-        {/* Zone 1: Brand Wordmark */}
-        <Link to="/" className="flex items-center gap-2.5 group shrink-0">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center font-bold text-white shadow-sm shadow-cyan-500/20 text-sm tracking-tight">
-            Z
-          </div>
-          <span className="text-base sm:text-lg font-bold tracking-tight text-white group-hover:text-cyan-400 transition-colors whitespace-nowrap">
-            {siteConfig.brand}
+        {/* Subtle ambient brand glow in navbar */}
+        <div className="absolute left-4 top-1/2 -translate-y-1/2 w-48 h-8 bg-cyan-500/10 rounded-full blur-2xl pointer-events-none" />
+
+        {/* Zone 1: Brand Wordmark & Architectural Emblem */}
+        <Link to="/" className="flex items-center gap-2.5 sm:gap-3 group shrink-0 relative z-10">
+          <ZaboraaLogoMark sizeClass="w-9 h-9 sm:w-10 sm:h-10" />
+          <span className="flex flex-col tracking-tight select-none">
+            <span className="flex items-center gap-1.5 leading-none">
+              <span className="text-base sm:text-lg font-black tracking-tight text-white font-sans group-hover:text-cyan-300 transition-colors">
+                ZABORAA
+              </span>
+              <span className="text-[10px] font-mono font-bold tracking-wider px-1.5 py-0.5 rounded bg-cyan-950/80 border border-cyan-500/40 text-cyan-300 uppercase shadow-sm group-hover:border-cyan-400 group-hover:bg-cyan-900/60 transition-all">
+                TECHNOLOGIES
+              </span>
+            </span>
+            <span className="text-[9px] font-mono tracking-widest text-slate-400 uppercase font-semibold mt-1 group-hover:text-cyan-300/80 transition-colors hidden sm:block">
+              Multi-Cloud VMware Architecture
+            </span>
           </span>
         </Link>
 
@@ -185,6 +198,20 @@ export const Navbar: React.FC = () => {
                     </div>
                     <div className="text-[10px] text-slate-400">
                       In-browser .xlsx parser & HCX wave mapping
+                    </div>
+                  </div>
+                </Link>
+                <Link
+                  to="/tools/aria-networks"
+                  className="flex items-start gap-2.5 px-3 py-2 rounded-lg hover:bg-slate-900 transition-colors group"
+                >
+                  <Network className="w-4 h-4 text-cyan-300 shrink-0 mt-0.5" />
+                  <div>
+                    <div className="text-xs font-bold text-slate-200 group-hover:text-cyan-300">
+                      Aria Networks (vRNI) Data Engine
+                    </div>
+                    <div className="text-[10px] text-slate-400">
+                      Flow analytics, app tiers & NSX DFW rules
                     </div>
                   </div>
                 </Link>
@@ -410,7 +437,7 @@ export const Navbar: React.FC = () => {
               onClick={() => setMobileMenuOpen(false)}
               className="block px-3 py-2 rounded-lg text-sm font-semibold text-cyan-400 hover:bg-slate-900"
             >
-              Engineering Workbench (4 Tools)
+              Engineering Workbench (5 Tools)
             </NavLink>
             <div className="pl-4 space-y-1 text-xs font-medium text-slate-400">
               <Link to="/tools/sizing" onClick={() => setMobileMenuOpen(false)} className="block py-1 hover:text-cyan-300">
@@ -418,6 +445,9 @@ export const Navbar: React.FC = () => {
               </Link>
               <Link to="/tools/rvtools-analyzer" onClick={() => setMobileMenuOpen(false)} className="block py-1 hover:text-emerald-300">
                 · RVTools Readiness Engine
+              </Link>
+              <Link to="/tools/aria-networks" onClick={() => setMobileMenuOpen(false)} className="block py-1 hover:text-cyan-300">
+                · Aria Networks & DFW Planner
               </Link>
               <Link to="/tools/dr-planner" onClick={() => setMobileMenuOpen(false)} className="block py-1 hover:text-rose-300">
                 · DR RPO/RTO Calculator

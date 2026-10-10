@@ -31,7 +31,8 @@ import {
   CheckSquare,
   AlertCircle,
   Zap,
-  Info
+  Info,
+  Network
 } from 'lucide-react';
 import {
   ParsedVMRecord,
@@ -54,6 +55,7 @@ import {
   calculateStorageCapacity
 } from '../../utils/storageCalculator';
 import { MigrationPlanner } from '../../components/MigrationPlanner';
+import { AriaNetworkDeepDiveSection } from '../../components/AriaNetworkDeepDiveSection';
 import { GOOGLE_DRIVE_CONFIG } from '../../data/mediaAssets';
 
 // Cloud Bare-Metal Node SKUs (Technical specifications only - ZERO COSTING)
@@ -375,7 +377,7 @@ export const RVToolsAnalyzerPage: React.FC = () => {
   const [uploadError, setUploadError] = useState<string | null>(null);
 
   // Active View Tabs
-  const [activeTab, setActiveTab] = useState<'inventory' | 'waves' | 'blockers' | 'storage' | 'vlans'>('inventory');
+  const [activeTab, setActiveTab] = useState<'inventory' | 'waves' | 'aria' | 'blockers' | 'storage' | 'vlans'>('inventory');
 
   // Selected Cloud Node SKU (Default: Azure VMware Solution with AV36P)
   const [selectedSkuKey, setSelectedSkuKey] = useState<string>('avs-av36p');
@@ -1065,6 +1067,15 @@ export const RVToolsAnalyzerPage: React.FC = () => {
               <span>Migration Wave Planner ({inScopeVMs.length} In-Scope)</span>
             </button>
             <button
+              onClick={() => setActiveTab('aria')}
+              className={`px-3 py-1.5 rounded-lg transition-colors cursor-pointer flex items-center gap-1.5 ${
+                activeTab === 'aria' ? 'bg-cyan-500 text-slate-950 font-bold' : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              <Network className="w-3.5 h-3.5" />
+              <span>Aria Flow & DFW Discovery</span>
+            </button>
+            <button
               onClick={() => setActiveTab('blockers')}
               className={`px-3 py-1.5 rounded-lg transition-colors cursor-pointer flex items-center gap-1.5 ${
                 activeTab === 'blockers' ? 'bg-cyan-500 text-slate-950 font-bold' : 'text-slate-400 hover:text-white'
@@ -1265,6 +1276,11 @@ export const RVToolsAnalyzerPage: React.FC = () => {
         {/* Tab 2: Migration Wave Planner */}
         {activeTab === 'waves' && (
           <MigrationPlanner workloads={ingestedVMs} />
+        )}
+
+        {/* Tab 3: Aria Operations for Networks Flow Analytics & DFW Engine */}
+        {activeTab === 'aria' && (
+          <AriaNetworkDeepDiveSection />
         )}
 
         {/* Tab 3: Advanced Migration Readiness & Blockers Dashboard */}

@@ -17,6 +17,7 @@ import { DisciplineDetailPage } from './pages/DisciplineDetailPage';
 import { WorkbenchHubPage } from './pages/tools/WorkbenchHubPage';
 import { NodeSizingToolPage } from './pages/tools/NodeSizingToolPage';
 import { RVToolsAnalyzerPage } from './pages/tools/RVToolsAnalyzerPage';
+import { AriaNetworksToolPage } from './pages/tools/AriaNetworksToolPage';
 import { DRPlannerPage } from './pages/tools/DRPlannerPage';
 import { DesignGeneratorPage } from './pages/tools/DesignGeneratorPage';
 import { BlueprintsPage } from './pages/BlueprintsPage';
@@ -144,6 +145,7 @@ const MainLayout: React.FC = () => {
           <Route path="/tools" element={<WorkbenchHubPage />} />
           <Route path="/tools/sizing" element={<NodeSizingToolPage />} />
           <Route path="/tools/rvtools-analyzer" element={<RVToolsAnalyzerPage />} />
+          <Route path="/tools/aria-networks" element={<AriaNetworksToolPage />} />
           <Route path="/tools/dr-planner" element={<DRPlannerPage />} />
           <Route path="/tools/design-generator" element={<DesignGeneratorPage />} />
 

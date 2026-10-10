@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { Link } from 'react-router-dom';
 import {
   Calendar,
   Layers,
@@ -16,7 +17,11 @@ import {
   Filter,
   ArrowRight,
   Sparkles,
-  Info
+  Info,
+  FileSpreadsheet,
+  Download,
+  X,
+  Network
 } from 'lucide-react';
 import {
   calculateMigrationWaves,
@@ -26,6 +31,7 @@ import {
   MigrationWaveSummary
 } from '../utils/migrationCalculator';
 import { IngestedVM } from '../services/workloadAnalyzer';
+import { exportColorCodedWavePlanExcel } from '../utils/excelWaveExport';
 
 interface MigrationPlannerProps {
   workloads: IngestedVM[];
@@ -45,6 +51,19 @@ export const MigrationPlanner: React.FC<MigrationPlannerProps> = ({
   const [expandedWave, setExpandedWave] = useState<number | null>(1); // Default expand Wave 1
   const [filterBlockersOnly, setFilterBlockersOnly] = useState<boolean>(false);
 
+  // Customer Name and Export Modal State
+  const [customerName, setCustomerName] = useState<string>('Global Financial Enterprises');
+  const [showExportModal, setShowExportModal] = useState<boolean>(false);
+
+  // Synchronized Aria Networks state from localStorage
+  const ariaSyncData = useMemo(() => {
+    try {
+      const raw = localStorage.getItem('zaboraa_aria_wave_state');
+      if (raw) return JSON.parse(raw);
+    } catch {}
+    return null;
+  }, []);
+
   // Compute wave analysis result
   const plannerConfig: WavePlannerConfig = useMemo(() => ({
     vCpuOvercommit,
@@ -60,6 +79,22 @@ export const MigrationPlanner: React.FC<MigrationPlannerProps> = ({
   }, [workloads, plannerConfig]);
 
   const inScopeCount = wavePlan.totalInScopeVMs;
+
+  const handleTriggerExcelExport = () => {
+    exportColorCodedWavePlanExcel({
+      customerName: customerName.trim() || 'Global Financial Enterprises',
+      architectName: 'Wasim Sayyed, Principal Cloud Architect',
+      targetCloud: 'Azure VMware Solution (AVS)',
+      nodeSku: 'AV36P Bare-Metal Host',
+      storagePolicy: 'RAID 5, FTT 1 (~1.33x Overhead)',
+      totalNodes: Math.max(3, Math.ceil(wavePlan.totalEffectiveCores / 36)),
+      vCpuOvercommit,
+      ramBufferPercent,
+      waves: wavePlan.waves,
+      allWorkloads: workloads
+    });
+    setShowExportModal(false);
+  };
 
   return (
     <div className={`space-y-6 ${className}`}>
@@ -200,6 +235,40 @@ export const MigrationPlanner: React.FC<MigrationPlannerProps> = ({
               Filter VMs with RDMs, Multi-Writer, or legacy drivers.
             </p>
           </div>
+        </div>
+      </div>
+
+      {/* Aria Operations for Networks Active Link Ribbon */}
+      <div className="p-4 rounded-xl bg-gradient-to-r from-slate-900 via-cyan-950/20 to-slate-900 border border-cyan-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+        <div className="flex items-center gap-3">
+          <div className="p-2 rounded-lg bg-cyan-950 border border-cyan-500/40 text-cyan-400 shrink-0">
+            <Network className="w-4 h-4" />
+          </div>
+          <div>
+            <div className="font-bold text-white flex items-center gap-2">
+              <span>Aria Operations for Networks (vRNI) Dependency Integration</span>
+              {ariaSyncData && (
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-mono bg-emerald-950 text-emerald-300 border border-emerald-500/40">
+                  Synchronized
+                </span>
+              )}
+            </div>
+            <p className="text-slate-400 mt-0.5 text-[11px]">
+              {ariaSyncData
+                ? `Mapped ${ariaSyncData.applications.length} multi-tier application groups (${ariaSyncData.dfwRules.length} NSX DFW rules) into wave migration sequencing.`
+                : 'Correlate wire-rate East-West flows, 3-tier application groups, and NSX DFW rules into this wave plan.'}
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 shrink-0">
+          <Link
+            to="/tools/aria-networks"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/40 text-cyan-300 text-xs font-semibold transition-colors"
+          >
+            <span>{ariaSyncData ? 'Inspect Aria Rules' : 'Open Aria Flow Engine'}</span>
+            <ArrowRight className="w-3.5 h-3.5" />
+          </Link>
         </div>
       </div>
 
