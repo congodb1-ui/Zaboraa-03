@@ -16,7 +16,7 @@ interface CloudPreset {
 }
 
 const CLOUD_PRESETS: Record<string, CloudPreset> = {
-  avs: {
+  'avs-av36p': {
     name: 'Azure VMware Solution',
     provider: 'Azure AVS',
     nodeModel: 'AV36P (Intel Xeon Gold 6354)',
@@ -28,7 +28,55 @@ const CLOUD_PRESETS: Record<string, CloudPreset> = {
     externalStorageName: 'Azure NetApp Files (ANF Standard/Premium)',
     externalStorageCostPerTB: 180
   },
-  vmc: {
+  'avs-av36': {
+    name: 'Azure VMware Solution',
+    provider: 'Azure AVS',
+    nodeModel: 'AV36 (Intel Xeon Gold 6140)',
+    nodeCores: 36,
+    nodeRamGB: 576,
+    rawStoragePerNodeTB: 15.4,
+    usableStoragePerNodeTB: 11.5,
+    nodeMonthlyCostUSD: 4800,
+    externalStorageName: 'Azure NetApp Files (ANF)',
+    externalStorageCostPerTB: 180
+  },
+  'avs-av48': {
+    name: 'Azure VMware Solution',
+    provider: 'Azure AVS',
+    nodeModel: 'AV48 (Intel Xeon Platinum 8368)',
+    nodeCores: 48,
+    nodeRamGB: 768,
+    rawStoragePerNodeTB: 23.0,
+    usableStoragePerNodeTB: 17.2,
+    nodeMonthlyCostUSD: 6500,
+    externalStorageName: 'Azure NetApp Files (ANF)',
+    externalStorageCostPerTB: 180
+  },
+  'avs-av52': {
+    name: 'Azure VMware Solution',
+    provider: 'Azure AVS',
+    nodeModel: 'AV52 (Intel Xeon Platinum 8470Q)',
+    nodeCores: 52,
+    nodeRamGB: 1536,
+    rawStoragePerNodeTB: 38.4,
+    usableStoragePerNodeTB: 28.8,
+    nodeMonthlyCostUSD: 8200,
+    externalStorageName: 'Azure NetApp Files (ANF)',
+    externalStorageCostPerTB: 180
+  },
+  'avs-av64': {
+    name: 'Azure VMware Solution',
+    provider: 'Azure AVS',
+    nodeModel: 'AV64 (Intel Xeon Platinum 8470)',
+    nodeCores: 64,
+    nodeRamGB: 1024,
+    rawStoragePerNodeTB: 30.7,
+    usableStoragePerNodeTB: 24.0,
+    nodeMonthlyCostUSD: 7800,
+    externalStorageName: 'Azure NetApp Files (ANF)',
+    externalStorageCostPerTB: 180
+  },
+  'vmc-i4i': {
     name: 'VMware Cloud on AWS',
     provider: 'AWS VMC',
     nodeModel: 'i4i.metal (Intel Xeon Ice Lake)',
@@ -40,7 +88,31 @@ const CLOUD_PRESETS: Record<string, CloudPreset> = {
     externalStorageName: 'Amazon FSx for NetApp ONTAP (Multi-AZ)',
     externalStorageCostPerTB: 195
   },
-  gcve: {
+  'vmc-i3en': {
+    name: 'VMware Cloud on AWS',
+    provider: 'AWS VMC',
+    nodeModel: 'i3en.metal (Storage-Optimized)',
+    nodeCores: 48,
+    nodeRamGB: 768,
+    rawStoragePerNodeTB: 60.0,
+    usableStoragePerNodeTB: 45.0,
+    nodeMonthlyCostUSD: 9200,
+    externalStorageName: 'Amazon FSx for NetApp ONTAP',
+    externalStorageCostPerTB: 195
+  },
+  'vmc-m7i': {
+    name: 'VMware Cloud on AWS',
+    provider: 'AWS VMC',
+    nodeModel: 'm7i.metal-24xl (Compute-Intensive)',
+    nodeCores: 96,
+    nodeRamGB: 384,
+    rawStoragePerNodeTB: 15.0,
+    usableStoragePerNodeTB: 10.5,
+    nodeMonthlyCostUSD: 6900,
+    externalStorageName: 'Amazon FSx for NetApp ONTAP',
+    externalStorageCostPerTB: 195
+  },
+  'gcve-ve1': {
     name: 'Google Cloud VMware Engine',
     provider: 'Google Cloud GCVE',
     nodeModel: 've1-standard-72 (Intel Xeon 6240)',
@@ -51,12 +123,24 @@ const CLOUD_PRESETS: Record<string, CloudPreset> = {
     nodeMonthlyCostUSD: 6400,
     externalStorageName: 'Google Cloud NetApp Volumes (GCNV)',
     externalStorageCostPerTB: 175
+  },
+  'gcve-ve2': {
+    name: 'Google Cloud VMware Engine',
+    provider: 'Google Cloud GCVE',
+    nodeModel: 've2-standard-128 (Emerald Rapids)',
+    nodeCores: 128,
+    nodeRamGB: 2048,
+    rawStoragePerNodeTB: 51.2,
+    usableStoragePerNodeTB: 38.0,
+    nodeMonthlyCostUSD: 11500,
+    externalStorageName: 'Google Cloud NetApp Volumes (GCNV)',
+    externalStorageCostPerTB: 175
   }
 };
 
 export const NodeSizingToolPage: React.FC = () => {
   const navigate = useNavigate();
-  const [selectedCloudKey, setSelectedCloudKey] = useState<string>('avs');
+  const [selectedCloudKey, setSelectedCloudKey] = useState<string>('avs-av36p');
   const [vmCount, setVmCount] = useState<number>(300);
   const [avgVcpu, setAvgVcpu] = useState<number>(4);
   const [avgRamGB, setAvgRamGB] = useState<number>(16);
@@ -175,23 +259,70 @@ export const NodeSizingToolPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Cloud Selector Bar */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-1.5 rounded-xl bg-slate-900 border border-slate-800">
-        {Object.entries(CLOUD_PRESETS).map(([key, val]) => (
-          <button
-            key={key}
-            onClick={() => setSelectedCloudKey(key)}
-            className={`p-3.5 rounded-lg text-left transition-all cursor-pointer ${
-              selectedCloudKey === key
-                ? 'bg-slate-800 border border-cyan-500/50 shadow-md text-white'
-                : 'hover:bg-slate-800/50 text-slate-400 border border-transparent'
-            }`}
-          >
-            <div className="text-xs font-mono text-cyan-400 font-semibold">{val.provider}</div>
-            <div className="text-sm font-bold mt-1 text-slate-100">{val.name}</div>
-            <div className="text-xs text-slate-400 mt-0.5">{val.nodeModel}</div>
-          </button>
-        ))}
+      {/* Cloud & SKU Selector Bar */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {/* AVS */}
+        <div className="p-3.5 rounded-xl bg-slate-900 border border-slate-800 space-y-2">
+          <div className="text-xs font-mono font-bold text-cyan-400 uppercase">Azure VMware Solution (AVS)</div>
+          <div className="grid grid-cols-2 gap-1.5">
+            {(['avs-av36p', 'avs-av36', 'avs-av48', 'avs-av64', 'avs-av52'] as const).map(k => (
+              <button
+                key={k}
+                onClick={() => setSelectedCloudKey(k)}
+                className={`p-2 rounded-lg text-left text-xs font-mono transition-all cursor-pointer border ${
+                  selectedCloudKey === k
+                    ? 'bg-cyan-950 border-cyan-400 text-white font-bold shadow-sm'
+                    : 'bg-slate-950/60 border-slate-800 text-slate-400 hover:border-slate-700'
+                }`}
+              >
+                <div>{k.replace('avs-', '').toUpperCase()}</div>
+                <div className="text-[9px] text-slate-500">{CLOUD_PRESETS[k].nodeCores}c · {CLOUD_PRESETS[k].nodeRamGB}G</div>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* GCVE */}
+        <div className="p-3.5 rounded-xl bg-slate-900 border border-slate-800 space-y-2">
+          <div className="text-xs font-mono font-bold text-blue-400 uppercase">Google Cloud VMware Engine (GCVE)</div>
+          <div className="space-y-1.5">
+            {(['gcve-ve1', 'gcve-ve2'] as const).map(k => (
+              <button
+                key={k}
+                onClick={() => setSelectedCloudKey(k)}
+                className={`w-full p-2.5 rounded-lg text-left text-xs font-mono transition-all cursor-pointer border ${
+                  selectedCloudKey === k
+                    ? 'bg-blue-950 border-blue-400 text-white font-bold shadow-sm'
+                    : 'bg-slate-950/60 border-slate-800 text-slate-400 hover:border-slate-700'
+                }`}
+              >
+                <div>{CLOUD_PRESETS[k].nodeModel}</div>
+                <div className="text-[9px] text-slate-500 mt-0.5">{CLOUD_PRESETS[k].nodeCores} Cores · {CLOUD_PRESETS[k].nodeRamGB} GiB · {CLOUD_PRESETS[k].usableStoragePerNodeTB} TiB</div>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* VMC */}
+        <div className="p-3.5 rounded-xl bg-slate-900 border border-slate-800 space-y-2">
+          <div className="text-xs font-mono font-bold text-amber-400 uppercase">VMware Cloud on AWS (VMC)</div>
+          <div className="space-y-1.5">
+            {(['vmc-i4i', 'vmc-i3en', 'vmc-m7i'] as const).map(k => (
+              <button
+                key={k}
+                onClick={() => setSelectedCloudKey(k)}
+                className={`w-full p-2 rounded-lg text-left text-xs font-mono transition-all cursor-pointer border ${
+                  selectedCloudKey === k
+                    ? 'bg-amber-950 border-amber-400 text-white font-bold shadow-sm'
+                    : 'bg-slate-950/60 border-slate-800 text-slate-400 hover:border-slate-700'
+                }`}
+              >
+                <div>{CLOUD_PRESETS[k].nodeModel}</div>
+                <div className="text-[9px] text-slate-500 mt-0.5">{CLOUD_PRESETS[k].nodeCores} Cores · {CLOUD_PRESETS[k].nodeRamGB} GiB · {CLOUD_PRESETS[k].usableStoragePerNodeTB} TiB</div>
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
 
       {/* Main Sizing Workbench Grid */}
