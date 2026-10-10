@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
+import * as XLSX from 'xlsx';
 import {
   Layers,
   HardDrive,
@@ -21,7 +22,14 @@ import {
   Maximize2,
   Printer,
   ChevronRight,
-  FileSpreadsheet
+  FileSpreadsheet,
+  AlertTriangle,
+  ShieldAlert,
+  Eye,
+  X,
+  Zap,
+  Clock,
+  ArrowRight
 } from 'lucide-react';
 import { useCustomization } from '../../context/CustomizationContext';
 import { GOOGLE_DRIVE_CONFIG } from '../../data/mediaAssets';
@@ -30,6 +38,14 @@ interface VlanSubsegment {
   vlanId: number;
   subnetCidr: string;
   environment: 'Dev' | 'Staging' | 'Pre-Prod' | 'Prod';
+}
+
+interface AIBlueprintResult {
+  imageUrl: string;
+  isFallback: boolean;
+  model: string;
+  prompt: string;
+  message?: string;
 }
 
 export const DesignGeneratorPage: React.FC = () => {
@@ -69,10 +85,25 @@ export const DesignGeneratorPage: React.FC = () => {
   const [mgmtCidrInput, setMgmtCidrInput] = useState<string>('10.240.0.0/22');
   const [decoupledStorageTB, setDecoupledStorageTB] = useState<number>(120);
 
-  // SVG Zoom
+  // DR Parameters (Hydrated from DR Planner or default)
+  const [drEngine, setDrEngine] = useState<string>('VMware SRM + vSphere Replication');
+  const [drRpoMinutes, setDrRpoMinutes] = useState<number>(5);
+  const [drRtoMinutes, setDrRtoMinutes] = useState<number>(20);
+  const [drStrategy, setDrStrategy] = useState<string>('Pilot Light (3-Node Minimum)');
+
+  // SVG Zoom & Modal States
   const [zoomScale, setZoomScale] = useState<number>(1.0);
   const [showDossierModal, setShowDossierModal] = useState<boolean>(false);
+  const [showPreFlightModal, setShowPreFlightModal] = useState<boolean>(false);
+  const [show3DModal, setShow3DModal] = useState<boolean>(false);
   const [importedNotice, setImportedNotice] = useState<string | null>(null);
+
+  // 3D Isometric AI Generation States
+  const [isGenerating3D, setIsGenerating3D] = useState<boolean>(false);
+  const [generationStep, setGenerationStep] = useState<string>('');
+  const [generationProgress, setGenerationProgress] = useState<number>(0);
+  const [aiBlueprintResult, setAiBlueprintResult] = useState<AIBlueprintResult | null>(null);
+  const [blueprint3DZoom, setBlueprint3DZoom] = useState<number>(1.0);
 
   // Hydrate from RVTools or DR Planner or Sizing Tool
   useEffect(() => {
@@ -107,6 +138,10 @@ export const DesignGeneratorPage: React.FC = () => {
         const parsed = JSON.parse(drExport);
         if (parsed.vms) setTotalVMCount(parsed.vms);
         if (parsed.storageTB) setDecoupledStorageTB(Math.round(parsed.storageTB * 0.6));
+        if (parsed.engine) setDrEngine(parsed.engine);
+        if (parsed.rpoMin) setDrRpoMinutes(parsed.rpoMin);
+        if (parsed.rtoMin) setDrRtoMinutes(parsed.rtoMin);
+        if (parsed.strategy) setDrStrategy(parsed.strategy === 'coldStorage' ? 'Cold Storage / On-Demand' : parsed.strategy === 'pilotLight' ? 'Pilot Light (3-Node Minimum)' : 'Hot Standby (Full Cluster)');
         setImportedNotice(`Hydrated from DR Planner: ${parsed.vms} protected VMs, ${parsed.storageTB} TB footprint, ${parsed.engine} (${parsed.rpoMin}m RPO).`);
       } else if (sizingExport) {
         const parsed = JSON.parse(sizingExport);
@@ -130,6 +165,13 @@ export const DesignGeneratorPage: React.FC = () => {
 
   const effectiveMgmtCidr = mgmtCidrInput.trim() || '10.240.0.0/22';
   const calculatedCloudNodes = Math.max(3, Math.ceil(totalVMCount / (nodeSku.includes('64') || nodeSku.includes('i4i') ? 70 : 45)));
+
+  const externalStorageName =
+    cloudPlatform === 'Azure VMware Solution'
+      ? 'Azure NetApp Files (ANF)'
+      : cloudPlatform === 'VMware Cloud on AWS'
+      ? 'Amazon FSx for NetApp ONTAP'
+      : 'Google Cloud NetApp Volumes (GCNV)';
 
   // 4K Canvas Drawing Engine (3840x2160)
   const draw4KCanvas = (targetCanvas: HTMLCanvasElement) => {
@@ -165,88 +207,89 @@ export const DesignGeneratorPage: React.FC = () => {
       ctx.stroke();
     }
 
-    // 2. Executive Header Banner
-    ctx.fillStyle = 'rgba(15, 23, 42, 0.95)';
-    ctx.fillRect(80, 80, width - 160, 200);
+    // 2. Blueprint Title Header Box
+    ctx.fillStyle = '#0f172a';
     ctx.strokeStyle = '#06b6d4';
     ctx.lineWidth = 4;
-    ctx.strokeRect(80, 80, width - 160, 200);
+    ctx.beginPath();
+    ctx.roundRect(80, 80, width - 160, 200, 16);
+    ctx.fill();
+    ctx.stroke();
 
-    // Header Content
     ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 52px "Plus Jakarta Sans", sans-serif';
-    ctx.fillText(`${customerName} — Production Hybrid Architecture Blueprint`, 130, 160);
+    ctx.font = 'bold 54px "Plus Jakarta Sans", sans-serif';
+    ctx.fillText(`${customerName.toUpperCase()} — HYBRID CLOUD TOPOLOGY BLUEPRINT`, 130, 165);
 
     ctx.fillStyle = '#94a3b8';
-    ctx.font = '28px "JetBrains Mono", monospace';
+    ctx.font = '30px "JetBrains Mono", monospace';
     ctx.fillText(
-      `TARGET CLOUD: ${cloudPlatform.toUpperCase()} (${nodeSku}) · ARCHITECT: ${architectName} · DATE: ${projectDate} · MANAGEMENT CIDR: ${effectiveMgmtCidr}`,
+      `ARCHITECT: ${architectName}  |  DATE: ${projectDate}  |  TARGET: ${cloudPlatform} (${calculatedCloudNodes}x ${nodeSku})  |  DR: ${drEngine}`,
       130,
-      225
+      230
     );
 
-    // 3. Panel 1: On-Premises Datacenter (Left)
+    // 3. Panel 1: On-Premises SDDC (Left)
     const p1X = 80;
     const p1Y = 330;
     const pWidth = 1100;
-    const pHeight = 1700;
+    const pHeight = 1720;
 
     ctx.fillStyle = 'rgba(15, 23, 42, 0.7)';
     ctx.fillRect(p1X, p1Y, pWidth, pHeight);
     ctx.strokeStyle = '#334155';
-    ctx.lineWidth = 3;
+    ctx.lineWidth = 2;
     ctx.strokeRect(p1X, p1Y, pWidth, pHeight);
 
-    // Panel 1 Title
     ctx.fillStyle = '#06b6d4';
     ctx.font = 'bold 36px "Plus Jakarta Sans", sans-serif';
-    ctx.fillText('01. ON-PREMISES ENTERPRISE DATACENTER', p1X + 40, p1Y + 70);
+    ctx.fillText('01. ON-PREMISES DATACENTER', p1X + 40, p1Y + 70);
 
-    // Box 1.1: Core vSphere Compute
+    // Box 1.1: vCenter Management
     ctx.fillStyle = 'rgba(30, 41, 59, 0.8)';
     ctx.fillRect(p1X + 40, p1Y + 120, pWidth - 80, 360);
     ctx.strokeStyle = '#475569';
     ctx.strokeRect(p1X + 40, p1Y + 120, pWidth - 80, 360);
     ctx.fillStyle = '#ffffff';
     ctx.font = 'bold 30px "Plus Jakarta Sans", sans-serif';
-    ctx.fillText('VMware vCenter Server (vSphere 7.x / 8.x)', p1X + 70, p1Y + 180);
+    ctx.fillText('VMware vCenter Server (VCSA)', p1X + 70, p1Y + 180);
     ctx.fillStyle = '#cbd5e1';
     ctx.font = '24px "JetBrains Mono", monospace';
-    ctx.fillText(`• ${vCenterCount} vCenter Server Appliance(s) (VCSA)`, p1X + 70, p1Y + 240);
-    ctx.fillText(`• ${clusterCount} Production Clusters (${esxiHostCount} Bare-Metal ESXi Hosts)`, p1X + 70, p1Y + 290);
-    ctx.fillText(`• ${totalVMCount} Virtual Machines Across ${environments.join(', ')}`, p1X + 70, p1Y + 340);
+    ctx.fillText(`• ${vCenterCount} vCenter Server Appliance(s)`, p1X + 70, p1Y + 240);
+    ctx.fillText(`• ${clusterCount} ESXi Clusters (${esxiHostCount} Compute Hosts)`, p1X + 70, p1Y + 290);
+    ctx.fillText(`• ${totalVMCount} Virtual Machines Across Workload Tiers`, p1X + 70, p1Y + 340);
     ctx.fillText(`• ${vdsCount} Virtual Distributed Switches (VDS)`, p1X + 70, p1Y + 390);
 
-    // Box 1.2: Storage & SAN
+    // Box 1.2: SAN/NAS Datastores
     ctx.fillStyle = 'rgba(30, 41, 59, 0.8)';
-    ctx.fillRect(p1X + 40, p1Y + 520, pWidth - 80, 320);
+    ctx.fillRect(p1X + 40, p1Y + 520, pWidth - 80, 340);
     ctx.strokeStyle = '#475569';
-    ctx.strokeRect(p1X + 40, p1Y + 520, pWidth - 80, 320);
+    ctx.strokeRect(p1X + 40, p1Y + 520, pWidth - 80, 340);
     ctx.fillStyle = '#ffffff';
     ctx.font = 'bold 30px "Plus Jakarta Sans", sans-serif';
-    ctx.fillText('On-Premises SAN / NAS Storage Tier', p1X + 70, p1Y + 580);
+    ctx.fillText('SAN & NAS Storage Tier', p1X + 70, p1Y + 580);
     ctx.fillStyle = '#cbd5e1';
     ctx.font = '24px "JetBrains Mono", monospace';
-    ctx.fillText('• Fibre Channel / iSCSI Enterprise Array Tier', p1X + 70, p1Y + 640);
-    ctx.fillText('• NFS / VMFS Shared Clustered Datastores', p1X + 70, p1Y + 700);
-    ctx.fillText(`• Subsegments / VLANs: ${subsegments.map(s => `VLAN ${s.vlanId}`).join(', ')}`, p1X + 70, p1Y + 760);
+    ctx.fillText('• Fibre Channel / iSCSI Clustered Arrays', p1X + 70, p1Y + 640);
+    ctx.fillText(`• Discovered VLANs: ${subsegments.map(s => s.vlanId).join(', ')}`, p1X + 70, p1Y + 690);
+    ctx.fillText(`• Segregated Environments: ${environments.join(', ')}`, p1X + 70, p1Y + 740);
 
-    // Box 1.3: HCX Connector Appliance Fleet
+    // Box 1.3: HCX Connector Fleet
     ctx.fillStyle = 'rgba(6, 78, 59, 0.7)';
-    ctx.fillRect(p1X + 40, p1Y + 880, pWidth - 80, 360);
+    ctx.fillRect(p1X + 40, p1Y + 900, pWidth - 80, 420);
     ctx.strokeStyle = '#10b981';
-    ctx.strokeRect(p1X + 40, p1Y + 880, pWidth - 80, 360);
+    ctx.strokeRect(p1X + 40, p1Y + 900, pWidth - 80, 420);
     ctx.fillStyle = '#34d399';
     ctx.font = 'bold 30px "Plus Jakarta Sans", sans-serif';
-    ctx.fillText('VMware HCX Connector Fleet (Enterprise Mesh)', p1X + 70, p1Y + 940);
+    ctx.fillText('VMware HCX Connector Fleet', p1X + 70, p1Y + 960);
     ctx.fillStyle = '#ffffff';
     ctx.font = '24px "JetBrains Mono", monospace';
-    ctx.fillText('• HCX Cloud Manager Interconnect (IX)', p1X + 70, p1Y + 1000);
-    ctx.fillText('• HCX Network Extension (NE) Fleet (L2 Broadcast)', p1X + 70, p1Y + 1050);
-    ctx.fillText('• HCX WAN Optimization (WO) Engine', p1X + 70, p1Y + 1100);
-    ctx.fillText('• Mobility Optimized Networking (MON) Active', p1X + 70, p1Y + 1150);
+    ctx.fillText('• HCX Interconnect (IX) Service Engine', p1X + 70, p1Y + 1020);
+    ctx.fillText('• HCX Network Extension (NE) Fleet', p1X + 70, p1Y + 1070);
+    ctx.fillText('• HCX WAN Optimization (WO)', p1X + 70, p1Y + 1120);
+    ctx.fillText('• Mobility Optimized Networking (MON) Active', p1X + 70, p1Y + 1170);
+    ctx.fillText(`• Disaster Recovery Engine: ${drEngine}`, p1X + 70, p1Y + 1220);
 
-    // 4. Panel 2: Hybrid Transit & Edge Security (Center)
+    // 4. Panel 2: Hybrid Transit & Security Edge (Center)
     const p2X = 1240;
     const p2Y = 330;
     const p2Width = 1100;
@@ -356,11 +399,7 @@ export const DesignGeneratorPage: React.FC = () => {
     ctx.fillStyle = '#ffffff';
     ctx.font = '24px "JetBrains Mono", monospace';
     ctx.fillText(`• Capacity: ${decoupledStorageTB} TB Offloaded from vSAN Sprawl`, p3X + 70, p3Y + 1000);
-    ctx.fillText(
-      `• Platform: ${cloudPlatform === 'Azure VMware Solution' ? 'Azure NetApp Files (ANF Standard/Premium)' : cloudPlatform === 'VMware Cloud on AWS' ? 'Amazon FSx for NetApp ONTAP' : 'Google Cloud NetApp Volumes'}`,
-      p3X + 70,
-      1050
-    );
+    ctx.fillText(`• Platform: ${externalStorageName}`, p3X + 70, 1050);
     ctx.fillText('• High-Throughput Dedicated NFS Datastore Mounts', p3X + 70, 1100);
 
     // 6. Connectors (Arrow lines across panels)
@@ -379,72 +418,226 @@ export const DesignGeneratorPage: React.FC = () => {
     ctx.moveTo(p2X + p2Width, p2Y + 660);
     ctx.lineTo(p3X, p3Y + 660);
     ctx.stroke();
+
+    // Reset dash
     ctx.setLineDash([]);
   };
 
-  // Export 4K PNG / JPG
+  // Export 4K Canvas Image
   const handleExport4K = (format: 'png' | 'jpeg') => {
-    const canvas = document.createElement('canvas');
-    draw4KCanvas(canvas);
-    const mime = format === 'png' ? 'image/png' : 'image/jpeg';
-    const dataUrl = canvas.toDataURL(mime, 0.95);
-    const a = document.createElement('a');
-    a.href = dataUrl;
-    a.download = `${customerName.replace(/\s+/g, '_')}_4K_Architecture_Blueprint.${format === 'png' ? 'png' : 'jpg'}`;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
+    const offscreen = document.createElement('canvas');
+    draw4KCanvas(offscreen);
+    const link = document.createElement('a');
+    link.download = `${customerName.replace(/\s+/g, '_')}_4K_Cloud_Architecture_Blueprint.${format}`;
+    link.href = offscreen.toDataURL(`image/${format}`, 1.0);
+    link.click();
+  };
+
+  // Export BOM to Excel
+  const handleExportBOMExcel = () => {
+    const wb = XLSX.utils.book_new();
+    const rows = [
+      { Category: 'General', Metric: 'Customer Name', Specification: customerName },
+      { Category: 'General', Metric: 'Lead Architect', Specification: architectName },
+      { Category: 'General', Metric: 'Target Hyperscaler Platform', Specification: cloudPlatform },
+      { Category: 'Cloud Cluster', Metric: 'Node Model SKU', Specification: nodeSku },
+      { Category: 'Cloud Cluster', Metric: 'Sized Host Count', Specification: `${calculatedCloudNodes} Bare-Metal Nodes` },
+      { Category: 'Cloud Cluster', Metric: 'Management CIDR', Specification: effectiveMgmtCidr },
+      { Category: 'Storage', Metric: 'Decoupled External Storage', Specification: `${decoupledStorageTB} TB (${externalStorageName})` },
+      { Category: 'Workloads', Metric: 'Protected Virtual Machines', Specification: `${totalVMCount} VMs` },
+      { Category: 'Networking', Metric: 'Physical Interconnect', Specification: connectivity },
+      { Category: 'Security', Metric: 'Next-Gen Firewall', Specification: nvaFirewall },
+      { Category: 'Security', Metric: 'Web Application Firewall', Specification: wafSolution },
+      { Category: 'Disaster Recovery', Metric: 'Replication Engine', Specification: drEngine },
+      { Category: 'Disaster Recovery', Metric: 'Target RPO SLA', Specification: `${drRpoMinutes} Minutes` },
+      { Category: 'Disaster Recovery', Metric: 'Target RTO SLA', Specification: `${drRtoMinutes} Minutes` }
+    ];
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rows), 'Architecture BOM');
+    XLSX.writeFile(wb, `${customerName.replace(/\s+/g, '_')}_Cloud_Architecture_BOM.xlsx`);
+  };
+
+  // Prompt Construction for Gemini Imagen 3
+  const buildIsometricDiagramPrompt = () => {
+    return `Dark enterprise blueprint aesthetic 3D isometric architectural diagram of a production hybrid VMware cloud topology for ${customerName}. Deep slate and midnight navy canvas background (#020617) with glowing high-contrast neon cyan, teal, and electric violet network lines, glowing 3D server rack chassis, and hyper-detailed isometric hardware annotations. Left panel displays on-premises enterprise datacenter with ${totalVMCount} VMs, vCenter Server, and VMware HCX interconnect mesh. Center transit panel shows dual redundant 10 Gbps ${connectivity} with ${nvaFirewall} next-gen firewall inspection and ${landingZone}. Right panel shows ${calculatedCloudNodes}x ${nodeSku} bare-metal SDDC nodes in ${cloudPlatform} with vSAN cluster and ${decoupledStorageTB} TB decoupled ${externalStorageName} NFS datastores. Replicated via ${drEngine} with ${drRpoMinutes}-minute RPO. Isometric orthographic 3D projection, photorealistic enterprise blueprint technical drawing, illuminated fiber optic paths, 4K presentation grade clarity.`;
+  };
+
+  // AI 3D Isometric Generation Trigger
+  const handleGenerateAIBlueprint = async () => {
+    setIsGenerating3D(true);
+    setShowPreFlightModal(false);
+    setGenerationProgress(10);
+    setGenerationStep('Synthesizing verified multi-tier infrastructure parameters...');
+
+    const prompt = buildIsometricDiagramPrompt();
+
+    // Progress simulation milestones
+    const timer1 = setTimeout(() => {
+      setGenerationProgress(35);
+      setGenerationStep('Rendering 3D isometric server racks, NSX-T Tier-0 gateways, and firewalls...');
+    }, 800);
+
+    const timer2 = setTimeout(() => {
+      setGenerationProgress(70);
+      setGenerationStep('Illuminating glowing neon network paths and decoupled storage fabric...');
+    }, 1800);
+
+    try {
+      const resp = await fetch('/api/generate-blueprint', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt })
+      });
+
+      const data = await resp.json();
+      setGenerationProgress(100);
+      setGenerationStep('Finalizing 4K dark blueprint render...');
+
+      if (data.success && data.imageBase64) {
+        setAiBlueprintResult({
+          imageUrl: `data:image/jpeg;base64,${data.imageBase64}`,
+          isFallback: false,
+          model: data.model || 'imagen-3.0-generate-002',
+          prompt: data.prompt || prompt
+        });
+      } else {
+        // Fallback with bundled high-res 3D isometric diagram
+        setAiBlueprintResult({
+          imageUrl: data.fallbackUrl || '/assets/images/blueprint_3d_isometric_1791610246387.jpg',
+          isFallback: true,
+          model: 'Bundled Enterprise 3D Blueprint Asset',
+          prompt,
+          message: data.message || 'Rendered using bundled high-resolution 3D isometric architecture blueprint.'
+        });
+      }
+
+      setTimeout(() => {
+        setIsGenerating3D(false);
+        setShow3DModal(true);
+      }, 500);
+    } catch (err: any) {
+      // In case of network error, gracefully fallback
+      setGenerationProgress(100);
+      setAiBlueprintResult({
+        imageUrl: '/assets/images/blueprint_3d_isometric_1791610246387.jpg',
+        isFallback: true,
+        model: 'Bundled Enterprise 3D Blueprint Asset',
+        prompt,
+        message: 'Loaded bundled high-resolution 3D isometric architecture blueprint.'
+      });
+      setTimeout(() => {
+        setIsGenerating3D(false);
+        setShow3DModal(true);
+      }, 500);
+    } finally {
+      clearTimeout(timer1);
+      clearTimeout(timer2);
+    }
+  };
+
+  // Download AI 3D Image
+  const handleDownloadAIBlueprint = () => {
+    if (!aiBlueprintResult) return;
+    const link = document.createElement('a');
+    link.download = `${customerName.replace(/\s+/g, '_')}_3D_Isometric_Cloud_Blueprint.png`;
+    link.href = aiBlueprintResult.imageUrl;
+    link.click();
   };
 
   return (
     <div className="py-12 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto space-y-10">
-      {/* Header */}
+      {/* Page Header */}
       <div className="space-y-4">
         <div className="flex items-center gap-2 text-xs font-mono text-slate-400">
           <Link to="/tools" className="hover:text-cyan-400 transition-colors">Engineering Workbench</Link>
           <span>/</span>
-          <span className="text-cyan-300">4K Ultra-HD Architecture Diagram Generator</span>
+          <span className="text-cyan-300">4K Architecture Topology & 3D Blueprint Generator</span>
         </div>
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-white">
-              Ultra-High-Resolution 4K Architecture Diagram Generator
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-white flex items-center gap-3">
+              <span>Enterprise 4K Architecture & 3D Blueprint Engine</span>
+              <span className="text-xs px-2.5 py-1 rounded-full bg-cyan-950 border border-cyan-500/40 text-cyan-300 font-mono font-semibold">
+                Dual Mode: Vector + 3D AI
+              </span>
             </h1>
-            <p className="text-sm text-slate-300 mt-1 max-w-3xl">
-              Capture production infrastructure metadata and render high-DPI vector topology diagrams. Outputs ultra-sharp 4K images (3840x2160), executive PDF dossiers, and multi-cloud deliverables.
+            <p className="text-sm text-slate-400 mt-1 max-w-3xl">
+              Synthesize enterprise VMware hybrid topologies into presentation-ready 3840×2160 (4K) blueprints and AI-generated 3D isometric architecture diagrams with glowing neon transit paths.
             </p>
           </div>
-          <div className="flex items-center gap-2">
+
+          <div className="flex flex-wrap items-center gap-2.5">
+            {/* Primary AI Generation Trigger Button */}
+            <button
+              onClick={() => setShowPreFlightModal(true)}
+              className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-indigo-600 hover:from-cyan-400 hover:to-indigo-500 text-slate-950 font-bold text-xs flex items-center gap-2 shadow-lg shadow-cyan-500/20 cursor-pointer transition-all hover:scale-[1.02]"
+            >
+              <Sparkles className="w-4 h-4 fill-slate-950" />
+              <span>Review & Generate 3D Blueprint</span>
+            </button>
+
             <button
               onClick={() => handleExport4K('png')}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-cyan-400 hover:bg-cyan-300 text-slate-950 font-bold text-xs transition-all shadow-md cursor-pointer"
+              className="px-3.5 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-200 font-semibold text-xs flex items-center gap-2 cursor-pointer shadow"
             >
-              <Download className="w-3.5 h-3.5" />
-              <span>Download 4K PNG (3840x2160)</span>
+              <Download className="w-4 h-4 text-cyan-400" />
+              <span>Export 4K Canvas</span>
             </button>
+
             <button
               onClick={() => setShowDossierModal(true)}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-xs font-semibold cursor-pointer"
+              className="px-3.5 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-200 font-semibold text-xs flex items-center gap-2 cursor-pointer shadow"
             >
-              <Printer className="w-3.5 h-3.5 text-cyan-400" />
+              <Printer className="w-4 h-4 text-emerald-400" />
               <span>Executive Dossier</span>
+            </button>
+
+            <button
+              onClick={handleExportBOMExcel}
+              className="px-3.5 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-200 font-semibold text-xs flex items-center gap-2 cursor-pointer shadow"
+            >
+              <FileSpreadsheet className="w-4 h-4 text-emerald-400" />
+              <span>Export BOM (.xlsx)</span>
             </button>
           </div>
         </div>
       </div>
 
+      {/* Hydration Banner if state was loaded */}
       {importedNotice && (
-        <div className="p-3.5 rounded-xl bg-cyan-950/60 border border-cyan-500/40 text-xs text-cyan-300 flex items-center justify-between">
-          <span className="flex items-center gap-2 font-mono">
-            <CheckCircle2 className="w-4 h-4 text-cyan-400" />
-            {importedNotice}
-          </span>
+        <div className="p-3.5 rounded-xl bg-cyan-950/40 border border-cyan-500/40 flex items-center justify-between gap-3 text-xs text-cyan-200">
+          <div className="flex items-center gap-2.5">
+            <CheckCircle2 className="w-4 h-4 text-cyan-400 shrink-0" />
+            <span>{importedNotice}</span>
+          </div>
           <button
             onClick={() => setImportedNotice(null)}
-            className="text-[11px] text-slate-400 hover:text-white underline cursor-pointer"
+            className="text-cyan-400 hover:text-white text-xs underline cursor-pointer"
           >
             Dismiss
           </button>
+        </div>
+      )}
+
+      {/* Generation Loading Overlay */}
+      {isGenerating3D && (
+        <div className="p-6 rounded-2xl bg-slate-900/90 border border-cyan-500/50 shadow-2xl space-y-4 animate-pulse">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <RefreshCw className="w-5 h-5 text-cyan-400 animate-spin" />
+              <div className="text-sm font-bold text-white">Generating 3D Isometric Architecture Blueprint</div>
+            </div>
+            <span className="font-mono text-cyan-400 text-xs font-bold">{generationProgress}%</span>
+          </div>
+          <div className="w-full bg-slate-950 h-2 rounded-full overflow-hidden border border-slate-800">
+            <div
+              className="bg-gradient-to-r from-cyan-400 to-indigo-500 h-full transition-all duration-500"
+              style={{ width: `${generationProgress}%` }}
+            />
+          </div>
+          <p className="text-xs text-slate-300 font-mono flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-cyan-400 animate-ping" />
+            <span>{generationStep}</span>
+          </p>
         </div>
       )}
 
@@ -625,12 +818,15 @@ export const DesignGeneratorPage: React.FC = () => {
                     <option value="AV36P">AV36P (36 cores, 576GB RAM)</option>
                     <option value="AV64">AV64 (64 cores, 1024GB RAM)</option>
                     <option value="AV48">AV48 (48 cores, 768GB RAM)</option>
+                    <option value="AV52">AV52 (52 cores, 1536GB RAM)</option>
+                    <option value="AV36">AV36 (36 cores, 576GB RAM)</option>
                   </>
                 )}
                 {cloudPlatform === 'VMware Cloud on AWS' && (
                   <>
                     <option value="i4i.metal">i4i.metal (64 cores, 1024GB RAM)</option>
                     <option value="i3en.metal">i3en.metal (96 cores, 768GB RAM)</option>
+                    <option value="m7i.metal-24xl">m7i.metal-24xl (96 cores, 384GB RAM)</option>
                   </>
                 )}
                 {cloudPlatform === 'Google Cloud VMware Engine' && (
@@ -662,7 +858,7 @@ export const DesignGeneratorPage: React.FC = () => {
                 max="800"
                 value={decoupledStorageTB}
                 onChange={e => setDecoupledStorageTB(Number(e.target.value))}
-                className="w-full px-3 py-1.5 bg-slate-950 border border-slate-800 rounded text-slate-200 text-xs font-mono"
+                className="w-full px-3 py-1.5 bg-slate-950 border border-slate-800 rounded text-slate-200 text-xs font-mono font-bold text-cyan-300"
               />
             </div>
           </div>
@@ -827,7 +1023,7 @@ export const DesignGeneratorPage: React.FC = () => {
                 External Decoupled Storage Tier ({decoupledStorageTB} TB)
               </text>
               <text x="865" y="540" fill="#ffffff" fontSize="10" fontFamily="JetBrains Mono">
-                • {cloudPlatform === 'Azure VMware Solution' ? 'Azure NetApp Files (ANF Standard/Premium)' : cloudPlatform === 'VMware Cloud on AWS' ? 'Amazon FSx for NetApp ONTAP' : 'Google Cloud NetApp Volumes'}
+                • {externalStorageName}
               </text>
               <text x="865" y="560" fill="#ffffff" fontSize="10" fontFamily="JetBrains Mono">• High-IOPS NFS Datastore Mounts</text>
               <text x="865" y="580" fill="#ffffff" fontSize="10" fontFamily="JetBrains Mono">• Offloads Storage Sprawl from Bare-Metal Hosts</text>
@@ -863,6 +1059,216 @@ export const DesignGeneratorPage: React.FC = () => {
           <ExternalLink className="w-3.5 h-3.5" />
         </a>
       </div>
+
+      {/* Pre-Flight "Review & Confirm Architecture Inputs" Modal */}
+      {showPreFlightModal && (
+        <div className="fixed inset-0 z-50 bg-slate-950/90 backdrop-blur-md p-4 sm:p-8 overflow-y-auto flex justify-center">
+          <div className="bg-slate-900 border border-cyan-500/50 rounded-2xl max-w-3xl w-full p-6 sm:p-8 space-y-6 text-slate-200 shadow-2xl relative my-auto">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-4">
+              <div className="space-y-1">
+                <span className="text-xs font-mono text-cyan-400 uppercase font-semibold flex items-center gap-2">
+                  <Sparkles className="w-4 h-4" />
+                  <span>Architecture Pre-Flight Review</span>
+                </span>
+                <h2 className="text-xl font-bold text-white">Review & Confirm Architecture Inputs</h2>
+              </div>
+              <button
+                onClick={() => setShowPreFlightModal(false)}
+                className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <p className="text-xs text-slate-400 leading-relaxed">
+              Verify the synthesized customer parameters, sized bare-metal hosts, network topology, and disaster recovery settings before initiating the 3D isometric diagram rendering engine.
+            </p>
+
+            {/* Inputs Review Matrix */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs font-mono">
+              <div className="p-3.5 rounded-xl bg-slate-950 border border-slate-800 space-y-1.5">
+                <div className="text-slate-400 text-[10px] uppercase">Customer & Project</div>
+                <div className="font-bold text-white text-sm">{customerName}</div>
+                <div className="text-[11px] text-cyan-300 font-sans">Lead: {architectName}</div>
+              </div>
+
+              <div className="p-3.5 rounded-xl bg-slate-950 border border-slate-800 space-y-1.5">
+                <div className="text-slate-400 text-[10px] uppercase">Target Hyperscaler & Nodes</div>
+                <div className="font-bold text-emerald-400 text-sm">{calculatedCloudNodes}x {nodeSku} Nodes</div>
+                <div className="text-[11px] text-slate-300 font-sans">{cloudPlatform}</div>
+              </div>
+
+              <div className="p-3.5 rounded-xl bg-slate-950 border border-slate-800 space-y-1.5">
+                <div className="text-slate-400 text-[10px] uppercase">Storage Tiers</div>
+                <div className="font-bold text-white text-xs">Primary: vSAN Enterprise / ESA</div>
+                <div className="text-[11px] text-cyan-300">Decoupled: {decoupledStorageTB} TB ({externalStorageName})</div>
+              </div>
+
+              <div className="p-3.5 rounded-xl bg-slate-950 border border-slate-800 space-y-1.5">
+                <div className="text-slate-400 text-[10px] uppercase">Workload Specifications</div>
+                <div className="font-bold text-white text-xs">{totalVMCount} Virtual Machines</div>
+                <div className="text-[11px] text-slate-400">~{totalVMCount * 4} vCPUs · ~{totalVMCount * 16} GiB RAM</div>
+              </div>
+
+              <div className="p-3.5 rounded-xl bg-slate-950 border border-slate-800 space-y-1.5">
+                <div className="text-slate-400 text-[10px] uppercase">Disaster Recovery Strategy</div>
+                <div className="font-bold text-indigo-300 text-xs">{drEngine}</div>
+                <div className="text-[11px] text-slate-400">{drRpoMinutes}-Min RPO · {drRtoMinutes}-Min RTO ({drStrategy})</div>
+              </div>
+
+              <div className="p-3.5 rounded-xl bg-slate-950 border border-slate-800 space-y-1.5">
+                <div className="text-slate-400 text-[10px] uppercase">Security Edge & Connectivity</div>
+                <div className="font-bold text-purple-300 text-xs">{nvaFirewall}</div>
+                <div className="text-[11px] text-slate-400">{connectivity}</div>
+              </div>
+            </div>
+
+            {/* Visual Aesthetic Confirmation */}
+            <div className="p-3.5 rounded-xl bg-slate-950 border border-cyan-500/30 text-xs flex items-center justify-between">
+              <div className="space-y-0.5">
+                <div className="font-bold text-white flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-cyan-400" />
+                  <span>Visual Aesthetic Profile:</span>
+                </div>
+                <div className="text-slate-400 text-[11px]">Dark enterprise blueprint palette with glowing neon cyan/violet network paths</div>
+              </div>
+              <span className="px-2 py-1 rounded bg-cyan-950 text-cyan-300 font-mono text-[10px] border border-cyan-500/40">
+                UHD 4K Ready
+              </span>
+            </div>
+
+            {/* Actions */}
+            <div className="flex items-center justify-end gap-3 pt-2 border-t border-slate-800">
+              <button
+                onClick={() => setShowPreFlightModal(false)}
+                className="px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs cursor-pointer"
+              >
+                Cancel & Adjust
+              </button>
+              <button
+                onClick={handleGenerateAIBlueprint}
+                className="px-5 py-2.5 rounded-lg bg-gradient-to-r from-cyan-400 to-indigo-500 hover:from-cyan-300 hover:to-indigo-400 text-slate-950 font-bold text-xs flex items-center gap-2 shadow-lg shadow-cyan-500/30 cursor-pointer"
+              >
+                <Sparkles className="w-4 h-4 fill-slate-950" />
+                <span>Generate 3D Architecture Blueprint</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 3D Isometric AI Blueprint Viewer Modal */}
+      {show3DModal && aiBlueprintResult && (
+        <div className="fixed inset-0 z-50 bg-slate-950/95 backdrop-blur-md p-3 sm:p-6 overflow-y-auto flex justify-center">
+          <div className="bg-slate-900 border border-cyan-500/50 rounded-2xl max-w-6xl w-full p-6 space-y-5 text-slate-200 shadow-2xl relative my-auto">
+            {/* Modal Header */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-3">
+              <div className="space-y-0.5">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-mono text-cyan-400 uppercase font-bold flex items-center gap-1.5">
+                    <Sparkles className="w-3.5 h-3.5" />
+                    <span>3D Isometric Cloud Architecture Blueprint</span>
+                  </span>
+                  {aiBlueprintResult.isFallback ? (
+                    <span className="px-2 py-0.5 rounded-full bg-amber-950 text-amber-300 border border-amber-500/40 text-[10px] font-mono">
+                      Bundled High-Res Asset
+                    </span>
+                  ) : (
+                    <span className="px-2 py-0.5 rounded-full bg-emerald-950 text-emerald-300 border border-emerald-500/40 text-[10px] font-mono">
+                      Live Gemini Imagen 3 Render
+                    </span>
+                  )}
+                </div>
+                <h2 className="text-lg font-bold text-white">{customerName} — 3D Architecture Topology</h2>
+              </div>
+
+              <div className="flex items-center gap-2">
+                {/* Zoom Controls */}
+                <div className="flex items-center gap-1 bg-slate-950 p-1 rounded-lg border border-slate-800">
+                  <button
+                    onClick={() => setBlueprint3DZoom(prev => Math.max(0.7, prev - 0.15))}
+                    className="p-1 rounded hover:bg-slate-800 text-slate-400 hover:text-white cursor-pointer"
+                  >
+                    <ZoomOut className="w-3.5 h-3.5" />
+                  </button>
+                  <span className="px-1.5 text-xs font-mono text-cyan-300">{Math.round(blueprint3DZoom * 100)}%</span>
+                  <button
+                    onClick={() => setBlueprint3DZoom(prev => Math.min(2.0, prev + 0.15))}
+                    className="p-1 rounded hover:bg-slate-800 text-slate-400 hover:text-white cursor-pointer"
+                  >
+                    <ZoomIn className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    onClick={() => setBlueprint3DZoom(1.0)}
+                    className="p-1 rounded hover:bg-slate-800 text-slate-400 hover:text-white cursor-pointer text-[10px] font-mono"
+                  >
+                    100%
+                  </button>
+                </div>
+
+                <button
+                  onClick={handleDownloadAIBlueprint}
+                  className="px-3 py-1.5 rounded-lg bg-cyan-400 hover:bg-cyan-300 text-slate-950 font-bold text-xs flex items-center gap-1.5 cursor-pointer shadow"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  <span>Download 3D Blueprint (.png)</span>
+                </button>
+
+                <button
+                  onClick={() => setShow3DModal(false)}
+                  className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+
+            {/* Viewport for Image */}
+            <div className="relative overflow-hidden rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-center min-h-[460px] max-h-[65vh]">
+              <div
+                style={{
+                  transform: `scale(${blueprint3DZoom})`,
+                  transition: 'transform 0.15s ease-out'
+                }}
+                className="max-w-full max-h-full flex items-center justify-center p-2"
+              >
+                <img
+                  src={aiBlueprintResult.imageUrl}
+                  alt={`${customerName} 3D Isometric Cloud Blueprint`}
+                  className="rounded-lg object-contain shadow-2xl max-h-[60vh] w-auto"
+                />
+              </div>
+            </div>
+
+            {/* Footer with Metadata & Google Drive Handoff */}
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pt-2 border-t border-slate-800 text-xs">
+              <div className="text-[11px] text-slate-400 font-mono">
+                <span className="text-white font-bold">{calculatedCloudNodes}x {nodeSku}</span> in {cloudPlatform} · <span className="text-cyan-300">{decoupledStorageTB} TB</span> {externalStorageName} · DR: {drEngine}
+              </div>
+
+              <div className="flex items-center gap-3">
+                <a
+                  href={GOOGLE_DRIVE_CONFIG.folderUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 text-cyan-400 hover:text-cyan-300 text-xs font-semibold"
+                >
+                  <FolderGit2 className="w-3.5 h-3.5" />
+                  <span>Sync with Shared Google Drive</span>
+                  <ExternalLink className="w-3 h-3" />
+                </a>
+
+                <button
+                  onClick={() => setShow3DModal(false)}
+                  className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs cursor-pointer"
+                >
+                  Done
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Executive Dossier Printable Modal */}
       {showDossierModal && (
@@ -901,11 +1307,12 @@ export const DesignGeneratorPage: React.FC = () => {
               <div className="font-bold text-white uppercase font-mono">Bill of Materials (BOM) Summary:</div>
               <ul className="space-y-1.5 text-slate-300">
                 <li>• {calculatedCloudNodes} Bare-Metal Hosts running {cloudPlatform} SDDC</li>
-                <li>• {decoupledStorageTB} TB External High-Performance NFS Datastore Tier</li>
+                <li>• {decoupledStorageTB} TB External High-Performance NFS Datastore Tier ({externalStorageName})</li>
                 <li>• VMware HCX Enterprise Mobility Fleet (IX, NE, WO)</li>
                 <li>• NSX-T Tier-0 Active-Active Gateway with ECMP Peering</li>
                 <li>• NVA Next-Gen Firewall: {nvaFirewall}</li>
                 <li>• Web Application Firewall: {wafSolution}</li>
+                <li>• Disaster Recovery Engine: {drEngine} ({drRpoMinutes}-Min RPO, {drRtoMinutes}-Min RTO)</li>
               </ul>
             </div>
           </div>

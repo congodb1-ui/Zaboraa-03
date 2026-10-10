@@ -9,6 +9,8 @@ export const GOOGLE_DRIVE_CONFIG = {
   thumbnailBaseUrl: 'https://lh3.googleusercontent.com/d/',
 };
 
+export const ISOMETRIC_BLUEPRINT_3D_FALLBACK = '/assets/images/blueprint_3d_isometric_1791610246387.jpg';
+
 /**
  * Resolves a media URL.
  * If given a Google Drive file ID (e.g. "gdrive:1abcXYZ..."), returns direct Google Drive URL.

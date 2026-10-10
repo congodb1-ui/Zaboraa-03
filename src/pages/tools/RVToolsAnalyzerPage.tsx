@@ -27,7 +27,11 @@ import {
   DollarSign,
   TrendingDown,
   Filter,
-  Check
+  Check,
+  ListChecks,
+  X,
+  CheckSquare,
+  AlertCircle
 } from 'lucide-react';
 import {
   ParsedVMRecord,
@@ -218,6 +222,10 @@ export const RVToolsAnalyzerPage: React.FC = () => {
 
   // Print Dossier Modal State
   const [showPrintModal, setShowPrintModal] = useState<boolean>(false);
+
+  // Remediation Action Checklist Modal State
+  const [showRemediationModal, setShowRemediationModal] = useState<boolean>(false);
+  const [remediationStepsChecked, setRemediationStepsChecked] = useState<Record<string, boolean>>({});
 
   // Helper to normalize VMware Tools strings
   const normalizeToolsStatus = (raw: string): NormalizedToolsStatus => {
@@ -742,18 +750,95 @@ export const RVToolsAnalyzerPage: React.FC = () => {
 
       {/* Target Cloud Ecosystem & Node SKU Selection Bar */}
       <div className="p-5 rounded-xl bg-slate-900 border border-cyan-500/30 shadow-lg space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800 pb-3">
+      {/* Target Cloud Ecosystem & Node SKU Selection Bar */}
+      <div className="p-5 rounded-xl bg-slate-900 border border-cyan-500/30 shadow-lg space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-3">
           <div className="flex items-center gap-2">
             <Server className="w-4 h-4 text-cyan-400" />
             <span className="text-xs font-mono font-bold text-white uppercase tracking-wider">
               Target Cloud Platform & Bare-Metal Node SKU Selector
             </span>
           </div>
-          <span className="text-[11px] font-mono text-cyan-300">
-            Current: <strong className="text-white">{selectedSku.name}</strong> · Base-2 Capacity Engine
-          </span>
+          <div className="flex flex-wrap items-center gap-3">
+            {/* Ecosystem Dropdown */}
+            <div className="flex items-center gap-1.5 text-xs font-mono">
+              <span className="text-slate-400">Ecosystem:</span>
+              <select
+                value={selectedSku.providerShort}
+                onChange={e => {
+                  const eco = e.target.value;
+                  if (eco === 'AVS') setSelectedSkuKey('avs-av36p');
+                  else if (eco === 'GCVE') setSelectedSkuKey('gcve-ve1');
+                  else if (eco === 'VMC') setSelectedSkuKey('vmc-i4i');
+                }}
+                className="bg-slate-950 border border-slate-700 px-2 py-1 rounded text-cyan-300 font-bold cursor-pointer text-xs"
+              >
+                <option value="AVS">Azure VMware Solution (AVS)</option>
+                <option value="GCVE">Google Cloud VMware Engine (GCVE)</option>
+                <option value="VMC">VMware Cloud on AWS (VMC)</option>
+              </select>
+            </div>
+
+            {/* Node SKU Dropdown */}
+            <div className="flex items-center gap-1.5 text-xs font-mono">
+              <span className="text-slate-400">Node SKU:</span>
+              <select
+                value={selectedSkuKey}
+                onChange={e => setSelectedSkuKey(e.target.value)}
+                className="bg-slate-950 border border-cyan-500/50 px-2 py-1 rounded text-white font-bold cursor-pointer text-xs"
+              >
+                {selectedSku.providerShort === 'AVS' && (
+                  <>
+                    <option value="avs-av36p">AV36P (36 Cores, 576 GiB RAM, 15.4 TiB Raw)</option>
+                    <option value="avs-av36">AV36 (36 Cores, 576 GiB RAM, 15.4 TiB Raw)</option>
+                    <option value="avs-av48">AV48 (48 Cores, 768 GiB RAM, 23.0 TiB Raw)</option>
+                    <option value="avs-av52">AV52 (52 Cores, 1536 GiB RAM, 38.4 TiB Raw)</option>
+                    <option value="avs-av64">AV64 (64 Cores, 1024 GiB RAM, 30.7 TiB Raw)</option>
+                  </>
+                )}
+                {selectedSku.providerShort === 'GCVE' && (
+                  <>
+                    <option value="gcve-ve1">ve1-standard-72 (72 Cores, 768 GiB RAM, 19.2 TiB Raw)</option>
+                    <option value="gcve-ve2">ve2-standard-128 (128 Cores, 2048 GiB RAM, 51.2 TiB Raw)</option>
+                  </>
+                )}
+                {selectedSku.providerShort === 'VMC' && (
+                  <>
+                    <option value="vmc-i4i">i4i.metal (64 Cores, 1024 GiB RAM, 30.0 TiB Raw)</option>
+                    <option value="vmc-i3en">i3en.metal (48 Cores, 768 GiB RAM, 60.0 TiB Raw)</option>
+                    <option value="vmc-m7i">m7i.metal-24xl (96 Cores, 384 GiB RAM, 15.0 TiB Raw)</option>
+                  </>
+                )}
+              </select>
+            </div>
+          </div>
         </div>
 
+        {/* Dynamic Architectural Sizing Metrics for Selected SKU */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs font-mono bg-slate-950/70 p-3 rounded-lg border border-slate-800/80">
+          <div>
+            <span className="text-[10px] text-slate-400 block">vCPU Overcommit Ratio</span>
+            <span className="text-cyan-300 font-bold text-sm">2.5 : 1</span>
+            <span className="text-[9px] text-slate-500 block">Effective Cores: {Math.ceil(inScopeVCPUs / 2.5)}</span>
+          </div>
+          <div>
+            <span className="text-[10px] text-slate-400 block">RAM Overhead Buffer</span>
+            <span className="text-cyan-300 font-bold text-sm">+10% ESXi Buffer</span>
+            <span className="text-[9px] text-slate-500 block">Total RAM: {Math.round(inScopeRAMGiB * 1.1)} GiB</span>
+          </div>
+          <div>
+            <span className="text-[10px] text-slate-400 block">Raw Node Storage</span>
+            <span className="text-white font-bold text-sm">{selectedSku.rawStorageTiB} TiB</span>
+            <span className="text-[9px] text-slate-500 block">Usable vSAN: {selectedSku.usableStorageTiB} TiB</span>
+          </div>
+          <div>
+            <span className="text-[10px] text-slate-400 block">Decoupled NFS Target</span>
+            <span className="text-indigo-300 font-bold text-sm truncate block">{selectedSku.externalStorageName}</span>
+            <span className="text-[9px] text-slate-500 block">${selectedSku.externalStorageCostPerTiB}/TiB/Month</span>
+          </div>
+        </div>
+
+        {/* Quick SKU Preset Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           {/* Azure VMware Solution SKUs */}
           <div className="space-y-1.5">
@@ -850,9 +935,18 @@ export const RVToolsAnalyzerPage: React.FC = () => {
       {/* Critical Health Warnings Banner */}
       {(criticalSnapshots.length > 0 || outdatedTools.length > 0) && (
         <div className="p-4 rounded-xl bg-rose-950/40 border border-rose-500/40 space-y-3">
-          <div className="flex items-center gap-2 text-rose-300 text-xs font-bold">
-            <AlertTriangle className="w-4 h-4 text-rose-400" />
-            <span>Pre-Migration Risk Matrix: Remediation Required Before Migration Execution</span>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-rose-500/20 pb-2">
+            <div className="flex items-center gap-2 text-rose-300 text-xs font-bold">
+              <AlertTriangle className="w-4 h-4 text-rose-400" />
+              <span>Pre-Migration Risk Matrix: Remediation Required Before Migration Execution</span>
+            </div>
+            <button
+              onClick={() => setShowRemediationModal(true)}
+              className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md bg-rose-900/80 hover:bg-rose-800 border border-rose-400/50 text-rose-200 text-xs font-semibold transition-colors cursor-pointer"
+            >
+              <ListChecks className="w-3.5 h-3.5 text-rose-300" />
+              <span>Open Actionable Remediation Checklist</span>
+            </button>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
             {criticalSnapshots.length > 0 && (
@@ -1491,6 +1585,140 @@ export const RVToolsAnalyzerPage: React.FC = () => {
           </div>
         </div>
       )}
+      {/* Actionable Remediation Checklist Modal */}
+      {showRemediationModal && (
+        <div className="fixed inset-0 z-50 bg-slate-950/90 backdrop-blur-md p-4 sm:p-8 overflow-y-auto flex justify-center">
+          <div className="bg-slate-900 border border-slate-700 rounded-2xl max-w-4xl w-full p-8 space-y-6 text-slate-200 shadow-2xl relative my-auto">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-4">
+              <div className="space-y-0.5">
+                <span className="text-xs font-mono text-rose-400 uppercase font-semibold flex items-center gap-1.5">
+                  <ShieldAlert className="w-3.5 h-3.5" />
+                  <span>Pre-Flight Remediation Matrix</span>
+                </span>
+                <h2 className="text-xl font-bold text-white">Pre-Migration Snapshot & Tools Action Checklist</h2>
+              </div>
+              <button
+                onClick={() => setShowRemediationModal(false)}
+                className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Step-by-step procedure sections */}
+            <div className="space-y-4 text-xs">
+              <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-3">
+                <div className="flex items-center justify-between">
+                  <h4 className="font-bold text-white flex items-center gap-2">
+                    <span className="w-5 h-5 rounded-full bg-rose-950 border border-rose-500/50 text-rose-300 flex items-center justify-center text-[10px] font-mono">1</span>
+                    <span>Snapshot Consolidation & Stun Prevention Protocol</span>
+                  </h4>
+                  <span className="text-[10px] font-mono text-rose-400 font-bold">{criticalSnapshots.length} VMs Flagged</span>
+                </div>
+                <p className="text-slate-400 leading-relaxed text-[11px]">
+                  VMware HCX requires clean base VMDK disks to initiate delta synchronization. Active snapshots exceeding 24 hours or 20 GiB cause VM stun, delta commit timeouts, and parent disk descriptor lock contention.
+                </p>
+
+                <div className="space-y-2 pt-1">
+                  {[
+                    { id: 'snap-1', text: 'Pause or reschedule third-party backup jobs (Veeam/Cohesity/Commvault) during the consolidation window.' },
+                    { id: 'snap-2', text: 'Temporarily set DRS Automation to Manual or Partially Automated to prevent vMotion during snapshot delete.' },
+                    { id: 'snap-3', text: 'In vCenter: Right-click VM > Snapshots > Manage Snapshots > Click "Delete All" (or run PowerCLI: Get-VM [VM-Name] | Get-Snapshot | Remove-Snapshot -Confirm:$false).' },
+                    { id: 'snap-4', text: 'Inspect VM Summary in vSphere Client and verify "Needs Consolidation: No". Monitor ESXi vpxa.log for asynchronous helper commit status.' },
+                    { id: 'snap-5', text: 'Perform HCX Site Pairing pre-flight check to confirm source datastore delta chain is fully consolidated.' }
+                  ].map(step => (
+                    <label key={step.id} className="flex items-start gap-2.5 p-2 rounded-lg bg-slate-900 border border-slate-800/80 cursor-pointer hover:bg-slate-800/40">
+                      <input
+                        type="checkbox"
+                        checked={Boolean(remediationStepsChecked[step.id])}
+                        onChange={e => setRemediationStepsChecked(prev => ({ ...prev, [step.id]: e.target.checked }))}
+                        className="mt-0.5 accent-cyan-400 rounded cursor-pointer"
+                      />
+                      <span className={`text-[11px] leading-relaxed ${remediationStepsChecked[step.id] ? 'line-through text-slate-500' : 'text-slate-300'}`}>
+                        {step.text}
+                      </span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-3">
+                <div className="flex items-center justify-between">
+                  <h4 className="font-bold text-white flex items-center gap-2">
+                    <span className="w-5 h-5 rounded-full bg-amber-950 border border-amber-500/50 text-amber-300 flex items-center justify-center text-[10px] font-mono">2</span>
+                    <span>VMware Tools & Guest OS Customization Protocol</span>
+                  </h4>
+                  <span className="text-[10px] font-mono text-amber-400 font-bold">{outdatedTools.length} VMs Flagged</span>
+                </div>
+                <p className="text-slate-400 leading-relaxed text-[11px]">
+                  HCX Guest Customization and non-disruptive IP re-addressing rely on running VMware Tools daemons. Missing or outdated tools result in network interface failure upon target SDDC boot.
+                </p>
+
+                <div className="space-y-2 pt-1">
+                  {[
+                    { id: 'tools-1', text: 'For Windows Servers: Deploy VMware Tools via SCCM or silent installer (setup64.exe /s /v"/qn REBOOT=R") and verify VMware Tools service is automatic.' },
+                    { id: 'tools-2', text: 'For RHEL / CentOS / Ubuntu Linux: Ensure distro-native open-vm-tools package is installed and active (sudo systemctl enable --now vmtoolsd).' },
+                    { id: 'tools-3', text: 'Confirm VSS guest quiescing support is enabled for SQL, Oracle, and Active Directory VMs.' }
+                  ].map(step => (
+                    <label key={step.id} className="flex items-start gap-2.5 p-2 rounded-lg bg-slate-900 border border-slate-800/80 cursor-pointer hover:bg-slate-800/40">
+                      <input
+                        type="checkbox"
+                        checked={Boolean(remediationStepsChecked[step.id])}
+                        onChange={e => setRemediationStepsChecked(prev => ({ ...prev, [step.id]: e.target.checked }))}
+                        className="mt-0.5 accent-cyan-400 rounded cursor-pointer"
+                      />
+                      <span className={`text-[11px] leading-relaxed ${remediationStepsChecked[step.id] ? 'line-through text-slate-500' : 'text-slate-300'}`}>
+                        {step.text}
+                      </span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              {/* Table of affected VMs */}
+              {criticalSnapshots.length > 0 && (
+                <div className="space-y-2">
+                  <h4 className="text-xs font-bold text-white uppercase font-mono">High-Priority Affected Virtual Machines ({criticalSnapshots.length})</h4>
+                  <div className="max-h-48 overflow-y-auto border border-slate-800 rounded-lg">
+                    <table className="w-full text-left text-[11px] font-mono">
+                      <thead className="bg-slate-950 text-slate-400 text-[10px] uppercase border-b border-slate-800">
+                        <tr>
+                          <th className="p-2">VM Name</th>
+                          <th className="p-2">Age (Hours)</th>
+                          <th className="p-2">Snapshot Size</th>
+                          <th className="p-2">Port Group</th>
+                          <th className="p-2">Recommended Action</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-800/60 text-slate-300">
+                        {criticalSnapshots.map((vm, idx) => (
+                          <tr key={idx} className="hover:bg-slate-800/30">
+                            <td className="p-2 font-bold text-white">{vm.vmName}</td>
+                            <td className="p-2 text-rose-400 font-bold">{vm.snapshotAgeHours}h ({Math.round(vm.snapshotAgeHours/24)} days)</td>
+                            <td className="p-2 text-cyan-300">{vm.snapshotSizeGiB} GiB</td>
+                            <td className="p-2 text-slate-400">{vm.portGroup}</td>
+                            <td className="p-2 text-emerald-400 font-sans text-[10px]">Consolidate before Wave {vm.assignedWave}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="flex justify-end pt-2 border-t border-slate-800">
+              <button
+                onClick={() => setShowRemediationModal(false)}
+                className="px-4 py-2 rounded-lg bg-cyan-400 hover:bg-cyan-300 text-slate-950 font-bold text-xs cursor-pointer"
+              >
+                Done / Close Checklist
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
     </div>
   );
 };
