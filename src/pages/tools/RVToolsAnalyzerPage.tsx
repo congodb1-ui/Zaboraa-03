@@ -24,14 +24,14 @@ import {
   ShieldAlert,
   Sliders,
   ExternalLink,
-  DollarSign,
-  TrendingDown,
   Filter,
   Check,
   ListChecks,
   X,
   CheckSquare,
-  AlertCircle
+  AlertCircle,
+  Zap,
+  Info
 } from 'lucide-react';
 import {
   ParsedVMRecord,
@@ -43,9 +43,20 @@ import {
   VMEnvironment,
   NormalizedToolsStatus
 } from '../../data/sampleRvToolsData';
+import {
+  IngestedVM,
+  parseRVToolsWorkbook,
+  WorkloadInventoryAssessment
+} from '../../services/workloadAnalyzer';
+import {
+  StoragePolicyId,
+  ENTERPRISE_STORAGE_POLICIES,
+  calculateStorageCapacity
+} from '../../utils/storageCalculator';
+import { MigrationPlanner } from '../../components/MigrationPlanner';
 import { GOOGLE_DRIVE_CONFIG } from '../../data/mediaAssets';
 
-// Cloud Ecosystems & Bare-Metal Node SKUs
+// Cloud Bare-Metal Node SKUs (Technical specifications only - ZERO COSTING)
 interface CloudSkuInfo {
   id: string;
   name: string;
@@ -55,9 +66,7 @@ interface CloudSkuInfo {
   ramGiB: number;
   rawStorageTiB: number;
   usableStorageTiB: number;
-  monthlyCostUSD: number;
   externalStorageName: string;
-  externalStorageCostPerTiB: number;
 }
 
 const CLOUD_SKUS: Record<string, CloudSkuInfo> = {
@@ -70,9 +79,7 @@ const CLOUD_SKUS: Record<string, CloudSkuInfo> = {
     ramGiB: 576,
     rawStorageTiB: 15.4,
     usableStorageTiB: 11.5,
-    monthlyCostUSD: 5200,
-    externalStorageName: 'Azure NetApp Files (ANF)',
-    externalStorageCostPerTiB: 180
+    externalStorageName: 'Azure NetApp Files (ANF)'
   },
   'avs-av36': {
     id: 'avs-av36',
@@ -83,9 +90,7 @@ const CLOUD_SKUS: Record<string, CloudSkuInfo> = {
     ramGiB: 576,
     rawStorageTiB: 15.4,
     usableStorageTiB: 11.5,
-    monthlyCostUSD: 4800,
-    externalStorageName: 'Azure NetApp Files (ANF)',
-    externalStorageCostPerTiB: 180
+    externalStorageName: 'Azure NetApp Files (ANF)'
   },
   'avs-av48': {
     id: 'avs-av48',
@@ -96,9 +101,7 @@ const CLOUD_SKUS: Record<string, CloudSkuInfo> = {
     ramGiB: 768,
     rawStorageTiB: 23.0,
     usableStorageTiB: 17.2,
-    monthlyCostUSD: 6500,
-    externalStorageName: 'Azure NetApp Files (ANF)',
-    externalStorageCostPerTiB: 180
+    externalStorageName: 'Azure NetApp Files (ANF)'
   },
   'avs-av52': {
     id: 'avs-av52',
@@ -109,9 +112,7 @@ const CLOUD_SKUS: Record<string, CloudSkuInfo> = {
     ramGiB: 1536,
     rawStorageTiB: 38.4,
     usableStorageTiB: 28.8,
-    monthlyCostUSD: 8200,
-    externalStorageName: 'Azure NetApp Files (ANF)',
-    externalStorageCostPerTiB: 180
+    externalStorageName: 'Azure NetApp Files (ANF)'
   },
   'avs-av64': {
     id: 'avs-av64',
@@ -122,9 +123,7 @@ const CLOUD_SKUS: Record<string, CloudSkuInfo> = {
     ramGiB: 1024,
     rawStorageTiB: 30.7,
     usableStorageTiB: 24.0,
-    monthlyCostUSD: 7800,
-    externalStorageName: 'Azure NetApp Files (ANF)',
-    externalStorageCostPerTiB: 180
+    externalStorageName: 'Azure NetApp Files (ANF)'
   },
   'gcve-ve1': {
     id: 'gcve-ve1',
@@ -135,9 +134,7 @@ const CLOUD_SKUS: Record<string, CloudSkuInfo> = {
     ramGiB: 768,
     rawStorageTiB: 19.2,
     usableStorageTiB: 14.0,
-    monthlyCostUSD: 6400,
-    externalStorageName: 'Google Cloud NetApp Volumes (GCNV)',
-    externalStorageCostPerTiB: 175
+    externalStorageName: 'Google Cloud NetApp Volumes (GCNV)'
   },
   'gcve-ve2': {
     id: 'gcve-ve2',
@@ -148,9 +145,7 @@ const CLOUD_SKUS: Record<string, CloudSkuInfo> = {
     ramGiB: 2048,
     rawStorageTiB: 51.2,
     usableStorageTiB: 38.0,
-    monthlyCostUSD: 11500,
-    externalStorageName: 'Google Cloud NetApp Volumes (GCNV)',
-    externalStorageCostPerTiB: 175
+    externalStorageName: 'Google Cloud NetApp Volumes (GCNV)'
   },
   'vmc-i4i': {
     id: 'vmc-i4i',
@@ -161,9 +156,7 @@ const CLOUD_SKUS: Record<string, CloudSkuInfo> = {
     ramGiB: 1024,
     rawStorageTiB: 30.0,
     usableStorageTiB: 20.5,
-    monthlyCostUSD: 7800,
-    externalStorageName: 'Amazon FSx for NetApp ONTAP',
-    externalStorageCostPerTiB: 195
+    externalStorageName: 'Amazon FSx for NetApp ONTAP'
   },
   'vmc-i3en': {
     id: 'vmc-i3en',
@@ -174,9 +167,7 @@ const CLOUD_SKUS: Record<string, CloudSkuInfo> = {
     ramGiB: 768,
     rawStorageTiB: 60.0,
     usableStorageTiB: 45.0,
-    monthlyCostUSD: 9200,
-    externalStorageName: 'Amazon FSx for NetApp ONTAP',
-    externalStorageCostPerTiB: 195
+    externalStorageName: 'Amazon FSx for NetApp ONTAP'
   },
   'vmc-m7i': {
     id: 'vmc-m7i',
@@ -187,29 +178,218 @@ const CLOUD_SKUS: Record<string, CloudSkuInfo> = {
     ramGiB: 384,
     rawStorageTiB: 15.0,
     usableStorageTiB: 10.5,
-    monthlyCostUSD: 6900,
-    externalStorageName: 'Amazon FSx for NetApp ONTAP',
-    externalStorageCostPerTiB: 195
+    externalStorageName: 'Amazon FSx for NetApp ONTAP'
   }
 };
 
+/**
+ * Hydrates parsed records into full IngestedVM models with blockers
+ */
+function hydrateSampleVMs(records: ParsedVMRecord[]): IngestedVM[] {
+  return records.map((r, idx) => {
+    const blockers: IngestedVM['blockers'] = [];
+
+    if (r.isRdmPhysical) {
+      blockers.push({
+        id: `blk-rdmp-${r.vmName}`,
+        category: 'RDM',
+        severity: 'CRITICAL',
+        title: 'Raw Device Mapping (Physical Mode RDM-P)',
+        description: 'Physical compatibility RDMs cannot be migrated live via HCX or vMotion without data corruption.',
+        remediationAction: 'Convert RDM-P to virtual VMDK or re-provision native Cloud NFS/Block storage before cutover.',
+        hcxImpact: 'Hard blocker for live HCX RAV. Requires cold migration or storage re-architecture.'
+      });
+    }
+
+    if (r.isSharedScsi || r.isMultiWriter) {
+      blockers.push({
+        id: `blk-multiwriter-${r.vmName}`,
+        category: 'SHARED_DISK',
+        severity: 'CRITICAL',
+        title: 'Multi-Writer Flag / Shared SCSI Bus Sharing',
+        description: 'Multi-node clustering (Oracle RAC, SQL Server FCI) detects shared disks with concurrent access enabled.',
+        remediationAction: 'Stage cluster nodes together in a dedicated migration wave with maintenance downtime window.',
+        hcxImpact: 'HCX RAV cannot replicate multi-writer disks live. Requires HCX Bulk / Cold or shared VMDK re-config.'
+      });
+    }
+
+    if (r.hardwareVersion && r.hardwareVersion < 11) {
+      blockers.push({
+        id: `blk-hw-${r.vmName}`,
+        category: 'HARDWARE_VERSION',
+        severity: 'CRITICAL',
+        title: `Legacy Virtual Hardware Version (vHardware ${r.hardwareVersion})`,
+        description: `Virtual hardware is version ${r.hardwareVersion}. Target Cloud ESXi baselines require HW version 14+.`,
+        remediationAction: 'Schedule hardware compatibility upgrade in vCenter before initiating migration.',
+        hcxImpact: 'Target cloud cluster will refuse to boot or generate compatibility fault on power-on.'
+      });
+    } else if (r.hardwareVersion && r.hardwareVersion < 15) {
+      blockers.push({
+        id: `blk-hw-warn-${r.vmName}`,
+        category: 'HARDWARE_VERSION',
+        severity: 'WARNING',
+        title: `Aging Virtual Hardware (vHardware ${r.hardwareVersion})`,
+        description: `Running below target cloud baseline (ESXi 7.0/8.0 uses HW 19/20).`,
+        remediationAction: 'Upgrade virtual hardware during migration cutover reboot.',
+        hcxImpact: 'Supported via backward compatibility, but prevents modern vCPU scaling features.'
+      });
+    }
+
+    if (r.toolsStatus === 'Missing / Stopped (Critical Migration Risk)') {
+      blockers.push({
+        id: `blk-tools-${r.vmName}`,
+        category: 'TOOLS',
+        severity: 'CRITICAL',
+        title: 'VMware Tools Missing or Stopped',
+        description: 'VMware guest tools are not communicating with ESXi.',
+        remediationAction: 'Install or start VMware Tools / open-vm-tools inside guest OS prior to migration.',
+        hcxImpact: 'HCX RAV cannot perform guest quiescing or IP verification during live cutover.'
+      });
+    } else if (r.toolsStatus === 'Outdated (Update Prior to Cutover)') {
+      blockers.push({
+        id: `blk-tools-warn-${r.vmName}`,
+        category: 'TOOLS',
+        severity: 'WARNING',
+        title: 'VMware Tools Outdated',
+        description: 'Installed Tools version is outdated compared to target ESXi host daemon.',
+        remediationAction: 'Update VMware Tools during next maintenance window.',
+        hcxImpact: 'Supported, but recommended to update to prevent vNIC driver timeouts.'
+      });
+    }
+
+    if (r.hasSnapshot && (r.snapshotAgeHours > 24 || r.snapshotSizeGiB > 20)) {
+      blockers.push({
+        id: `blk-snap-${r.vmName}`,
+        category: 'SNAPSHOT',
+        severity: 'CRITICAL',
+        title: `High-Risk Stale Snapshot (${r.snapshotAgeHours}h / ${r.snapshotSizeGiB} GiB)`,
+        description: 'Workload has an active snapshot older than 24 hours or exceeding 20 GiB.',
+        remediationAction: 'Consolidate snapshots in source vCenter immediately before initiating HCX baseline sync.',
+        hcxImpact: 'Severe delta sync performance degradation and risk of guest stun during consolidation.'
+      });
+    }
+
+    if (r.vnicType && (r.vnicType === 'E1000' || r.vnicType === 'E1000E')) {
+      blockers.push({
+        id: `blk-vnic-${r.vmName}`,
+        category: 'VNIC',
+        severity: 'WARNING',
+        title: `Legacy Network Adapter Detected (${r.vnicType})`,
+        description: 'Virtual machine is configured with emulated legacy E1000/E1000E network adapters.',
+        remediationAction: 'Convert network adapters to paravirtualized VMXNET3 to enable 10/25/100 Gbps line-rate throughput.',
+        hcxImpact: 'Supported, but causes high host CPU interrupts and throttles network throughput in cloud.'
+      });
+    }
+
+    if (r.storageController && (r.storageController.includes('PARALLEL') || r.storageController.includes('BUSLOGIC'))) {
+      blockers.push({
+        id: `blk-controller-${r.vmName}`,
+        category: 'CONTROLLER',
+        severity: 'WARNING',
+        title: `Legacy Storage Controller (${r.storageController})`,
+        description: 'Storage controller uses legacy parallel SCSI emulation.',
+        remediationAction: 'Upgrade storage controller driver to VMware Paravirtual SCSI (PVSCSI).',
+        hcxImpact: 'Increases host CPU cycles during high I/O burst. Upgrade recommended.'
+      });
+    }
+
+    let score = 100;
+    const criticals = blockers.filter(b => b.severity === 'CRITICAL').length;
+    const warnings = blockers.filter(b => b.severity === 'WARNING').length;
+    score = Math.max(20, 100 - criticals * 30 - warnings * 10);
+
+    return {
+      vmName: r.vmName,
+      vmId: `vm-${1000 + idx}`,
+      scope: r.scope,
+      isManagementInfra: r.isManagementInfra,
+      powerState: r.powerState,
+      isTemplate: false,
+      cpus: r.cpus,
+      memoryGiB: r.memoryGiB,
+      provisionedDiskGiB: r.provisionedDiskGiB,
+      inUseDiskGiB: r.inUseDiskGiB,
+      storageTiB: r.storageTiB,
+      provisioningType: r.provisioningType,
+      os: r.os,
+      datacenter: r.datacenter,
+      cluster: r.cluster,
+      hardwareVersionNumber: r.hardwareVersion || 19,
+      hardwareVersionRaw: `vmx-${r.hardwareVersion || 19}`,
+      isHardwareObsolete: (r.hardwareVersion || 19) < 11,
+      toolsStatus: r.toolsStatus,
+      disks: [
+        {
+          diskName: 'Hard disk 1',
+          capacityGiB: r.provisionedDiskGiB,
+          inUseGiB: r.inUseDiskGiB,
+          controllerType: r.storageController === 'LSI_LOGIC_PARALLEL' ? 'LSI_LOGIC_PARALLEL' : 'PVSCSI',
+          controllerRaw: r.storageController || 'PVSCSI',
+          isRDM: Boolean(r.isRdmPhysical || r.isRdmVirtual),
+          rdmMode: r.isRdmPhysical ? 'Physical' : r.isRdmVirtual ? 'Virtual' : 'None',
+          isSharedScsiBus: Boolean(r.isSharedScsi),
+          isMultiWriter: Boolean(r.isMultiWriter)
+        }
+      ],
+      primaryController: r.storageController || 'PVSCSI',
+      hasLegacyController: Boolean(r.storageController && r.storageController.includes('PARALLEL')),
+      hasRdmPhysical: Boolean(r.isRdmPhysical),
+      hasRdmVirtual: Boolean(r.isRdmVirtual),
+      hasMultiWriter: Boolean(r.isMultiWriter),
+      hasSharedScsiBus: Boolean(r.isSharedScsi),
+      nics: [
+        {
+          adapterName: 'Network adapter 1',
+          adapterType: r.vnicType === 'E1000E' ? 'E1000E' : 'VMXNET3',
+          portGroup: r.portGroup,
+          vlanId: r.vlanId,
+          isLegacyVnic: Boolean(r.vnicType && (r.vnicType === 'E1000' || r.vnicType === 'E1000E'))
+        }
+      ],
+      portGroup: r.portGroup,
+      vlanId: r.vlanId,
+      hasLegacyVnic: Boolean(r.vnicType && (r.vnicType === 'E1000' || r.vnicType === 'E1000E')),
+      hasSnapshot: r.hasSnapshot,
+      snapshotAgeHours: r.snapshotAgeHours,
+      snapshotSizeGiB: r.snapshotSizeGiB,
+      environment: r.environment,
+      assignedWave: r.assignedWave,
+      targetStorageTier: r.targetStorageTier,
+      recommendedMethod: r.recommendedMethod,
+      readinessScore: score,
+      blockers
+    };
+  });
+}
+
 export const RVToolsAnalyzerPage: React.FC = () => {
   const navigate = useNavigate();
-  const [vmRecords, setVmRecords] = useState<ParsedVMRecord[]>(SAMPLE_ENTERPRISE_VMS);
+
+  // Ingested Workload Inventory
+  const [ingestedVMs, setIngestedVMs] = useState<IngestedVM[]>(() => hydrateSampleVMs(SAMPLE_ENTERPRISE_VMS));
   const [fileName, setFileName] = useState<string>('Enterprise_Production_Sample_Cluster.xlsx');
   const [isParsing, setIsParsing] = useState<boolean>(false);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [methodFilter, setMethodFilter] = useState<string>('all');
   const [scopeFilter, setScopeFilter] = useState<string>('all');
   const [uploadError, setUploadError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'inventory' | 'waves' | 'vlans' | 'health'>('inventory');
+
+  // Active View Tabs
+  const [activeTab, setActiveTab] = useState<'inventory' | 'waves' | 'blockers' | 'storage' | 'vlans'>('inventory');
 
   // Selected Cloud Node SKU (Default: Azure VMware Solution with AV36P)
   const [selectedSkuKey, setSelectedSkuKey] = useState<string>('avs-av36p');
   const selectedSku = CLOUD_SKUS[selectedSkuKey] || CLOUD_SKUS['avs-av36p'];
 
-  // WAN throughput slider for wave migration duration modeling (Mbps)
-  const [migrationWanMbps, setMigrationWanMbps] = useState<number>(2000); // 2 Gbps default
+  // Global Sizing & Overcommit Controls
+  const [vCpuOvercommit, setVCpuOvercommit] = useState<number>(2.0); // 1:1, 2:1, 3:1, 4:1
+  const [ramBufferPercent, setRamBufferPercent] = useState<number>(15); // 10%, 15%, 20%
+  const [storagePolicyId, setStoragePolicyId] = useState<StoragePolicyId>('raid5_ftt1');
+  const [slackFactorPercent, setSlackFactorPercent] = useState<number>(25); // 25% default
+
+  // Storage Allocation Split (vSAN % vs External SAN %)
+  const [vsanPercentage, setVsanPercentage] = useState<number>(40); // 40% vSAN, 60% External SAN
+  const [enableDecoupledStorage, setEnableDecoupledStorage] = useState<boolean>(true);
 
   // Network Extension (Stretched L2) per-VLAN toggles
   const [extendedVlanState, setExtendedVlanState] = useState<Record<number, boolean>>({
@@ -217,6 +397,7 @@ export const RVToolsAnalyzerPage: React.FC = () => {
     20: true,
     30: true,
     40: true,
+    50: true,
     100: false // Mgmt is not extended
   });
 
@@ -227,36 +408,7 @@ export const RVToolsAnalyzerPage: React.FC = () => {
   const [showRemediationModal, setShowRemediationModal] = useState<boolean>(false);
   const [remediationStepsChecked, setRemediationStepsChecked] = useState<Record<string, boolean>>({});
 
-  // Helper to normalize VMware Tools strings
-  const normalizeToolsStatus = (raw: string): NormalizedToolsStatus => {
-    const s = (raw || '').toLowerCase();
-    if (s.includes('open') || s.includes('unmanaged') || s.includes('guesttoolsunmanaged')) {
-      return 'Linux Open-VM-Tools (Verified)';
-    }
-    if (s.includes('old') || s.includes('upgrade') || s.includes('outdated')) {
-      return 'Outdated (Update Prior to Cutover)';
-    }
-    if (s.includes('notinstalled') || s.includes('notrunning') || s.includes('missing') || s.includes('stopped')) {
-      return 'Missing / Stopped (Critical Migration Risk)';
-    }
-    return 'Healthy (Running)';
-  };
-
-  // Helper to detect management network
-  const checkIsManagement = (portGroup: string, vlanId: number): boolean => {
-    const s = portGroup.toLowerCase();
-    return (
-      vlanId === 100 ||
-      s.includes('mgmt') ||
-      s.includes('management') ||
-      s.includes('vcenter') ||
-      s.includes('esxi') ||
-      s.includes('infra') ||
-      s.includes('identity')
-    );
-  };
-
-  // Parse Excel File in browser across multiple sheets with composite joins and Base-2 arithmetic
+  // Parse Excel File in browser across multiple sheets with automated workloadAnalyzer
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -271,285 +423,98 @@ export const RVToolsAnalyzerPage: React.FC = () => {
         const bstr = evt.target?.result;
         const wb = XLSX.read(bstr, { type: 'binary' });
 
-        // 1. Parse vInfo
-        const sheetName = wb.SheetNames.find(s => s.toLowerCase() === 'vinfo') || wb.SheetNames[0];
-        const ws = wb.Sheets[sheetName];
-        const jsonData: any[] = XLSX.utils.sheet_to_json(ws);
-
-        if (!jsonData || jsonData.length === 0) {
-          throw new Error('No rows found in vInfo sheet. Please ensure a valid RVTools export.');
-        }
-
-        // 2. Parse vSnapshot if available
-        const snapSheet = wb.SheetNames.find(s => s.toLowerCase() === 'vsnapshot');
-        const snapData: any[] = snapSheet ? XLSX.utils.sheet_to_json(wb.Sheets[snapSheet]) : [];
-        const snapshotMap = new Map<string, { ageHours: number; sizeGiB: number }>();
-        snapData.forEach(row => {
-          const vm = String(row['VM'] || '').trim().toLowerCase();
-          if (vm) {
-            const dateStr = String(row['Date / time'] || row['Date'] || '');
-            const parsedDate = dateStr ? new Date(dateStr) : new Date();
-            const ageHours = Math.max(1, Math.round((Date.now() - parsedDate.getTime()) / 3600000));
-            // Base-2: MiB / 1024 -> GiB
-            const sizeMB = Number(row['Size MB'] || row['Size MiB'] || 5120);
-            const sizeGiB = Math.round((sizeMB / 1024) * 10) / 10;
-            snapshotMap.set(vm, { ageHours, sizeGiB });
-          }
-        });
-
-        // 3. Parse vNetwork if available (Join on composite key: VM Name + MAC / NIC)
-        const netSheet = wb.SheetNames.find(s => s.toLowerCase() === 'vnetwork');
-        const netData: any[] = netSheet ? XLSX.utils.sheet_to_json(wb.Sheets[netSheet]) : [];
-        const netMap = new Map<string, { portGroup: string; vlanId: number }>();
-        netData.forEach(row => {
-          const vm = String(row['VM'] || '').trim().toLowerCase();
-          if (vm) {
-            const portGroup = String(row['Network'] || row['Portgroup'] || 'VLAN-10-Default');
-            // Try explicit VLAN column first
-            let vlanId = Number(row['VLAN'] || row['Vlan ID'] || 0);
-            if (!vlanId || isNaN(vlanId)) {
-              const match = portGroup.match(/\d+/);
-              vlanId = match ? parseInt(match[0], 10) : 10;
-            }
-            netMap.set(vm, { portGroup, vlanId });
-          }
-        });
-
-        // 4. Parse vTools if available
-        const toolsSheet = wb.SheetNames.find(s => s.toLowerCase() === 'vtools');
-        const toolsData: any[] = toolsSheet ? XLSX.utils.sheet_to_json(wb.Sheets[toolsSheet]) : [];
-        const toolsMap = new Map<string, string>();
-        toolsData.forEach(row => {
-          const vm = String(row['VM'] || '').trim().toLowerCase();
-          if (vm) {
-            const status = String(row['Tools status'] || row['Tools'] || '');
-            toolsMap.set(vm, status);
-          }
-        });
-
-        // 5. Map rows to ParsedVMRecord with strict Base-2 math and Scoping
-        const parsed: ParsedVMRecord[] = jsonData.slice(0, 600).map((row, idx) => {
-          const vmName = String(row['VM'] || row['VM Name'] || `VM-${idx + 1}`);
-          const lowerName = vmName.toLowerCase();
-          const powerState = String(row['Powerstate'] || row['Power state'] || 'poweredOn').toLowerCase().includes('off') ? 'poweredOff' : 'poweredOn';
-          const cpus = Number(row['CPUs'] || row['Num CPU'] || 2);
-
-          // Base-2 Memory: MiB / 1024 -> GiB
-          const memoryMB = Number(row['Memory'] || row['Memory MB'] || 8192);
-          const memoryGiB = Math.round((memoryMB / 1024) * 10) / 10 || 8;
-
-          // Base-2 Provisioned Storage: MiB / 1024 -> GiB, MiB / (1024*1024) -> TiB
-          const provisionedMB = Number(row['Provisioned MB'] || row['Provisioned Storage MB'] || 102400);
-          const provisionedDiskGiB = Math.round((provisionedMB / 1024) * 10) / 10 || 100;
-          const storageTiB = Math.round((provisionedMB / (1024 * 1024)) * 1000) / 1000 || 0.1;
-
-          // Base-2 In-Use Storage
-          const inUseMB = Number(row['In Use MB'] || row['In Use Storage MB'] || provisionedMB * 0.7);
-          const inUseDiskGiB = Math.round((inUseMB / 1024) * 10) / 10 || 70;
-          const provisioningType: 'Thin' | 'Thick' = inUseDiskGiB < provisionedDiskGiB * 0.85 ? 'Thin' : 'Thick';
-
-          const os = String(row['OS according to the configuration file'] || row['OS'] || 'Linux / Windows');
-          const datacenter = String(row['Datacenter'] || 'Primary-DC');
-          const cluster = String(row['Cluster'] || 'Compute-Cluster-01');
-
-          // VMware Tools status
-          const rawTools = toolsMap.get(lowerName) || String(row['VMware Tools'] || row['Tools status'] || 'toolsOk');
-          const toolsStatus = normalizeToolsStatus(rawTools);
-
-          // Snapshot detection
-          const snapInfo = snapshotMap.get(lowerName);
-          const hasSnapshot = Boolean(snapInfo);
-          const snapshotAgeHours = snapInfo?.ageHours || 0;
-          const snapshotSizeGiB = snapInfo?.sizeGiB || 0;
-
-          // Network mapping
-          const netInfo = netMap.get(lowerName);
-          const portGroup = netInfo?.portGroup || (lowerName.includes('db') ? 'VLAN-30-DB' : lowerName.includes('web') ? 'VLAN-10-Web' : 'VLAN-20-App');
-          const vlanId = netInfo?.vlanId || (lowerName.includes('db') ? 30 : lowerName.includes('web') ? 10 : 20);
-
-          // Management Infrastructure Auto-Detection
-          const isManagementInfra = checkIsManagement(portGroup, vlanId) || lowerName.includes('vcenter') || lowerName.includes('esxi');
-          // Auto-set management VMs to 'Out of Scope' by default (confirmed decision)
-          const scope: VMScope = isManagementInfra ? 'Out of Scope' : 'In Scope';
-
-          // External Storage Recommendation (>= 2 TiB or high-capacity DB)
-          const targetStorageTier: StorageTierOption = storageTiB >= 2.0 || provisionedDiskGiB >= 2048 ? 'External NFS' : 'Local vSAN';
-
-          // Environment classification
-          let environment: VMEnvironment = 'Prod';
-          if (lowerName.includes('dev')) environment = 'Dev';
-          else if (lowerName.includes('stg') || lowerName.includes('stage')) environment = 'Staging';
-          else if (lowerName.includes('qa')) environment = 'QA';
-          else if (lowerName.includes('uat')) environment = 'UAT';
-          else if (lowerName.includes('dr')) environment = 'DR';
-          else if (lowerName.includes('preprod')) environment = 'Pre-Prod';
-
-          // 4-Wave Auto-Classification
-          let assignedWave: 0 | 1 | 2 | 3 = 2;
-          let recommendedMethod: ParsedVMRecord['recommendedMethod'] = 'HCX Bulk Migration';
-          let readinessReason = 'Production application tier. Scheduled HCX Bulk replication.';
-
-          if (isManagementInfra || lowerName.includes('dc') || lowerName.includes('dns') || lowerName.includes('splunk') || lowerName.includes('mon')) {
-            assignedWave = 0;
-            recommendedMethod = 'HCX RAV (Live vMotion)';
-            readinessReason = isManagementInfra
-              ? 'Management network detected. Auto-set Out of Scope to prevent sizing distortion.'
-              : 'Wave 0 Foundational Identity/DNS/Monitoring. Live RAV migration preserves Active Directory.';
-          } else if (environment === 'Dev' || environment === 'Staging' || environment === 'QA' || powerState === 'poweredOff') {
-            assignedWave = 1;
-            recommendedMethod = powerState === 'poweredOff' ? 'HCX Cold Migration' : 'HCX Bulk Migration';
-            readinessReason = 'Wave 1 Non-production environment. Baseline validation wave.';
-          } else if (lowerName.includes('db') || lowerName.includes('sql') || lowerName.includes('oracle') || lowerName.includes('sap') || storageTiB >= 2.0) {
-            assignedWave = 3;
-            recommendedMethod = 'HCX RAV (Live vMotion)';
-            readinessReason = 'Wave 3 Mission-critical database backend. External NFS recommended for storage decoupling.';
-          }
-
-          return {
-            vmName,
-            scope,
-            isManagementInfra,
-            powerState,
-            cpus,
-            memoryGiB,
-            provisionedDiskGiB,
-            inUseDiskGiB,
-            storageTiB,
-            provisioningType,
-            os,
-            datacenter,
-            cluster,
-            hasSnapshot,
-            snapshotAgeHours,
-            snapshotSizeGiB,
-            toolsStatus,
-            portGroup,
-            vlanId,
-            environment,
-            assignedWave,
-            targetStorageTier,
-            recommendedMethod,
-            readinessReason
-          };
-        });
-
-        setVmRecords(parsed);
+        const assessment: WorkloadInventoryAssessment = parseRVToolsWorkbook(wb, file.name);
+        setIngestedVMs(assessment.workloads);
+        setIsParsing(false);
       } catch (err: any) {
-        setUploadError(err.message || 'Failed to parse RVTools spreadsheet.');
-      } finally {
+        setUploadError(err.message || 'Failed to parse RVTools export. Verify vInfo and vDisk sheets.');
         setIsParsing(false);
       }
     };
     reader.onerror = () => {
-      setUploadError('Failed to read file.');
+      setUploadError('File reading failed. Please try again.');
       setIsParsing(false);
     };
     reader.readAsBinaryString(file);
   };
 
-  // Inline Scope Override
-  const handleScopeChange = (vmName: string, newScope: VMScope) => {
-    setVmRecords(prev =>
-      prev.map(vm => (vm.vmName === vmName ? { ...vm, scope: newScope } : vm))
+  // Scoping Toggle
+  const toggleScope = (vmName: string) => {
+    setIngestedVMs(prev =>
+      prev.map(vm => {
+        if (vm.vmName !== vmName) return vm;
+        const nextScope: VMScope =
+          vm.scope === 'In Scope' ? 'Out of Scope' : vm.scope === 'Out of Scope' ? 'To Be Decided' : 'In Scope';
+        return { ...vm, scope: nextScope };
+      })
     );
   };
 
-  // Inline Storage Tier Override
-  const handleStorageTierChange = (vmName: string, newTier: StorageTierOption) => {
-    setVmRecords(prev =>
-      prev.map(vm => (vm.vmName === vmName ? { ...vm, targetStorageTier: newTier } : vm))
+  // Storage Tier Toggle
+  const toggleStorageTier = (vmName: string) => {
+    setIngestedVMs(prev =>
+      prev.map(vm => {
+        if (vm.vmName !== vmName) return vm;
+        const nextTier: StorageTierOption = vm.targetStorageTier === 'Local vSAN' ? 'External NFS' : 'Local vSAN';
+        return { ...vm, targetStorageTier: nextTier };
+      })
     );
   };
 
-  // Inline Environment Override
-  const handleEnvironmentChange = (vmName: string, newEnv: VMEnvironment) => {
-    setVmRecords(prev =>
-      prev.map(vm => (vm.vmName === vmName ? { ...vm, environment: newEnv } : vm))
-    );
-  };
-
-  // Inline Wave Override
-  const handleWaveOverride = (vmName: string, newWave: 0 | 1 | 2 | 3) => {
-    setVmRecords(prev =>
-      prev.map(vm => (vm.vmName === vmName ? { ...vm, assignedWave: newWave } : vm))
-    );
-  };
-
-  // Toggle Stretched L2 for VLAN
-  const handleToggleVlanExtension = (vlanId: number) => {
-    setExtendedVlanState(prev => ({
-      ...prev,
-      [vlanId]: prev[vlanId] === undefined ? true : !prev[vlanId]
-    }));
-  };
-
-  // Aggregated Calculations (Differentiating All Assessed vs. Strictly In-Scope)
-  const totalAssessedVMs = vmRecords.length;
-  const inScopeVMs = useMemo(() => vmRecords.filter(vm => vm.scope === 'In Scope'), [vmRecords]);
-  const outOfScopeVMs = useMemo(() => vmRecords.filter(vm => vm.scope === 'Out of Scope'), [vmRecords]);
-  const tbdVMs = useMemo(() => vmRecords.filter(vm => vm.scope === 'To Be Decided'), [vmRecords]);
-
-  // Strict Base-2 Metrics computed exclusively from In-Scope Workloads
+  // In-Scope Aggregates
+  const inScopeVMs = useMemo(() => ingestedVMs.filter(v => v.scope === 'In Scope'), [ingestedVMs]);
   const inScopeVCPUs = useMemo(() => inScopeVMs.reduce((acc, vm) => acc + vm.cpus, 0), [inScopeVMs]);
-  const inScopeRAMGiB = useMemo(() => Math.round(inScopeVMs.reduce((acc, vm) => acc + vm.memoryGiB, 0)), [inScopeVMs]);
-  const inScopeStorageTiB = useMemo(() => Math.round(inScopeVMs.reduce((acc, vm) => acc + vm.storageTiB, 0) * 10) / 10, [inScopeVMs]);
-
-  // Decoupled Storage Breakdown
-  const inScopeDecoupledTiB = useMemo(() => {
-    return Math.round(
-      inScopeVMs
-        .filter(vm => vm.targetStorageTier === 'External NFS')
-        .reduce((acc, vm) => acc + vm.storageTiB, 0) * 10
-    ) / 10;
+  const inScopeRAMGiB = useMemo(() => inScopeVMs.reduce((acc, vm) => acc + vm.memoryGiB, 0), [inScopeVMs]);
+  const inScopeStorageTiB = useMemo(() => {
+    return Math.round(inScopeVMs.reduce((acc, vm) => acc + vm.storageTiB, 0) * 10) / 10;
   }, [inScopeVMs]);
 
-  const inScopeLocalVsanTiB = useMemo(() => {
-    return Math.max(0, Math.round((inScopeStorageTiB - inScopeDecoupledTiB) * 10) / 10);
-  }, [inScopeStorageTiB, inScopeDecoupledTiB]);
+  // Usable Storage Capacity Calculation using storageCalculator engine
+  const effectiveVsanPercent = enableDecoupledStorage ? vsanPercentage : 100;
+  const storageAnalysis = useMemo(() => {
+    return calculateStorageCapacity({
+      totalUsedStorageTB: inScopeStorageTiB,
+      totalProvisionedStorageTB: Math.round(inScopeStorageTiB * 1.3 * 10) / 10,
+      vsanPercentage: effectiveVsanPercent,
+      storagePolicyId,
+      slackFactorPercent,
+      nodeRawStorageTB: selectedSku.rawStorageTiB
+    });
+  }, [inScopeStorageTiB, effectiveVsanPercent, storagePolicyId, slackFactorPercent, selectedSku.rawStorageTiB]);
 
-  // Thin vs Thick breakdown (In Scope)
-  const thinCount = inScopeVMs.filter(vm => vm.provisioningType === 'Thin').length;
-  const thickCount = inScopeVMs.filter(vm => vm.provisioningType === 'Thick').length;
+  const selectedPolicy = ENTERPRISE_STORAGE_POLICIES[storagePolicyId];
 
-  // Critical health risks
-  const criticalSnapshots = vmRecords.filter(vm => vm.hasSnapshot && (vm.snapshotAgeHours > 24 || vm.snapshotSizeGiB > 20));
-  const outdatedTools = vmRecords.filter(vm => vm.toolsStatus !== 'Healthy (Running)' && vm.toolsStatus !== 'Linux Open-VM-Tools (Verified)');
-
-  // Migration Readiness Score: 0 - 100
-  const readinessScore = Math.max(
-    30,
-    Math.min(
-      100,
-      100 - criticalSnapshots.length * 5 - outdatedTools.length * 3
-    )
-  );
-
-  // Dynamic Sizing Engine for Selected SKU (Strict Base-2 Math + In-Scope Only)
+  // Dynamic Sizing Engine for Selected SKU (Strict Technical Capacity - ZERO COSTING)
   const sizingEngine = useMemo(() => {
-    const vCpuOvercommit = 2.5;
-    const effectiveCores = inScopeVCPUs / vCpuOvercommit;
-    const ramWithBuffer = inScopeRAMGiB * 1.2; // 20% HA & hypervisor buffer
+    const effectiveCores = Math.ceil(inScopeVCPUs / vCpuOvercommit);
+    const ramWithBuffer = Math.round(inScopeRAMGiB * (1 + ramBufferPercent / 100));
 
     // Nodes needed by compute and memory
     const computeNodes = Math.ceil(effectiveCores / selectedSku.cores);
     const memoryNodes = Math.ceil(ramWithBuffer / selectedSku.ramGiB);
 
-    // Nodes without external storage (Pure vSAN: all storage on local nodes)
-    const vsanNodesPure = Math.ceil(inScopeStorageTiB / selectedSku.usableStorageTiB);
-    const nodesWithoutDecoupled = Math.max(3, computeNodes, memoryNodes, vsanNodesPure);
+    // Nodes without external storage (Pure 100% vSAN)
+    const pureStorage = calculateStorageCapacity({
+      totalUsedStorageTB: inScopeStorageTiB,
+      totalProvisionedStorageTB: inScopeStorageTiB * 1.3,
+      vsanPercentage: 100,
+      storagePolicyId,
+      slackFactorPercent,
+      nodeRawStorageTB: selectedSku.rawStorageTiB
+    });
+    const nodesWithoutDecoupled = Math.max(selectedPolicy.minHosts, computeNodes, memoryNodes, pureStorage.vsanStorageNodesRequired);
 
-    // Nodes with external storage offload (vSAN handles only remaining storage)
-    const vsanNodesDecoupled = Math.ceil(inScopeLocalVsanTiB / selectedSku.usableStorageTiB);
-    const nodesWithDecoupled = Math.max(3, computeNodes, memoryNodes, vsanNodesDecoupled);
-
+    // Nodes with external storage offload
+    const nodesWithDecoupled = Math.max(selectedPolicy.minHosts, computeNodes, memoryNodes, storageAnalysis.vsanStorageNodesRequired);
     const nodeReduction = Math.max(0, nodesWithoutDecoupled - nodesWithDecoupled);
 
-    // Cost calculations
-    const pureMonthlyCost = nodesWithoutDecoupled * selectedSku.monthlyCostUSD;
-    const decoupledNodeCost = nodesWithDecoupled * selectedSku.monthlyCostUSD;
-    const externalStorageCost = Math.round(inScopeDecoupledTiB * selectedSku.externalStorageCostPerTiB);
-    const decoupledTotalCost = decoupledNodeCost + externalStorageCost;
-    const monthlySavings = Math.max(0, pureMonthlyCost - decoupledTotalCost);
+    // Determine limiting resource driver
+    let limitingDriver = 'Compute (vCPU Cores)';
+    if (memoryNodes >= computeNodes && memoryNodes >= storageAnalysis.vsanStorageNodesRequired) {
+      limitingDriver = 'Memory (RAM Footprint)';
+    } else if (storageAnalysis.vsanStorageNodesRequired >= computeNodes && storageAnalysis.vsanStorageNodesRequired >= memoryNodes) {
+      limitingDriver = 'vSAN Storage Parity';
+    }
 
     return {
       computeNodes,
@@ -557,12 +522,34 @@ export const RVToolsAnalyzerPage: React.FC = () => {
       nodesWithoutDecoupled,
       nodesWithDecoupled,
       nodeReduction,
-      pureMonthlyCost,
-      decoupledTotalCost,
-      monthlySavings,
-      externalStorageCost
+      limitingDriver,
+      effectiveCores,
+      ramWithBuffer
     };
-  }, [inScopeVCPUs, inScopeRAMGiB, inScopeStorageTiB, inScopeLocalVsanTiB, inScopeDecoupledTiB, selectedSku]);
+  }, [inScopeVCPUs, inScopeRAMGiB, inScopeStorageTiB, vCpuOvercommit, ramBufferPercent, storagePolicyId, slackFactorPercent, selectedSku, selectedPolicy, storageAnalysis]);
+
+  // Blockers & Compatibility Scanner Summaries
+  const allBlockers = useMemo(() => {
+    return ingestedVMs.flatMap(vm => vm.blockers);
+  }, [ingestedVMs]);
+
+  const criticalBlockers = useMemo(() => {
+    return ingestedVMs.filter(vm => vm.blockers.some(b => b.severity === 'CRITICAL'));
+  }, [ingestedVMs]);
+
+  const rdmPhysicalVMs = useMemo(() => ingestedVMs.filter(vm => vm.hasRdmPhysical), [ingestedVMs]);
+  const sharedScsiVMs = useMemo(() => ingestedVMs.filter(vm => vm.hasSharedScsiBus || vm.hasMultiWriter), [ingestedVMs]);
+  const legacyVnicVMs = useMemo(() => ingestedVMs.filter(vm => vm.hasLegacyVnic), [ingestedVMs]);
+  const legacyControllerVMs = useMemo(() => ingestedVMs.filter(vm => vm.hasLegacyController), [ingestedVMs]);
+  const obsoleteHwVMs = useMemo(() => ingestedVMs.filter(vm => vm.isHardwareObsolete), [ingestedVMs]);
+  const outdatedToolsVMs = useMemo(() => ingestedVMs.filter(vm => vm.toolsStatus !== 'Healthy (Running)' && vm.toolsStatus !== 'Linux Open-VM-Tools (Verified)'), [ingestedVMs]);
+  const criticalSnapshotsVMs = useMemo(() => ingestedVMs.filter(vm => vm.hasSnapshot && (vm.snapshotAgeHours > 24 || vm.snapshotSizeGiB > 20)), [ingestedVMs]);
+
+  // Overall Readiness Score
+  const readinessScore = useMemo(() => {
+    if (ingestedVMs.length === 0) return 85;
+    return Math.round(ingestedVMs.reduce((a, v) => a + v.readinessScore, 0) / ingestedVMs.length);
+  }, [ingestedVMs]);
 
   // Stretched L2 VLAN Aggregation & HCX Appliance Fleet Sizing
   const vlanSummary = useMemo(() => {
@@ -584,60 +571,14 @@ export const RVToolsAnalyzerPage: React.FC = () => {
     }));
   }, [inScopeVMs, extendedVlanState]);
 
-  // Extended VLANs count & HCX NE pair fleet requirement (1 pair per 8 extended VLANs)
   const extendedVlanCount = useMemo(() => {
     return vlanSummary.filter(v => v.isExtended).length;
   }, [vlanSummary]);
   const hcxNePairsRequired = Math.max(1, Math.ceil(extendedVlanCount / 8));
 
-  // 4-Wave Sequencing Calculations for In-Scope Workloads
-  const waveAnalytics = useMemo(() => {
-    return [0, 1, 2, 3].map(wIndex => {
-      const vms = inScopeVMs.filter(v => v.assignedWave === wIndex);
-      const waveStorageTiB = Math.round(vms.reduce((a, v) => a + v.storageTiB, 0) * 10) / 10;
-      const waveRAMGiB = Math.round(vms.reduce((a, v) => a + v.memoryGiB, 0));
-
-      const ravCount = vms.filter(v => v.recommendedMethod === 'HCX RAV (Live vMotion)').length;
-      const bulkCount = vms.filter(v => v.recommendedMethod === 'HCX Bulk Migration').length;
-      const coldCount = vms.filter(v => v.recommendedMethod === 'HCX Cold Migration').length;
-
-      // Delta sync transfer time: assume compressed delta rate (15% daily churn over 1024 base)
-      const compressedDataMb = waveStorageTiB * 1024 * 0.3 * 8 * 1024;
-      const durationSeconds = compressedDataMb / (migrationWanMbps * 0.8);
-      const durationHours = Math.round((durationSeconds / 3600) * 10) / 10;
-
-      const titles = [
-        'Wave 0: Shared Services & Core Infrastructure',
-        'Wave 1: Dev, QA & Staging Environments',
-        'Wave 2: Production Web & Middleware Tiers',
-        'Wave 3: Mission-Critical Databases'
-      ];
-      const cutoverWindows = [
-        'Zero downtime (Live RAV cutover)',
-        '4-Hour Weekend Batch Window',
-        '2-Hour Staggered Evening Cutover',
-        '30-Minute High-Priority Transaction Window'
-      ];
-
-      return {
-        waveIndex: wIndex,
-        title: titles[wIndex],
-        cutoverWindow: cutoverWindows[wIndex],
-        vms,
-        count: vms.length,
-        waveStorageTiB,
-        waveRAMGiB,
-        ravCount,
-        bulkCount,
-        coldCount,
-        durationHours
-      };
-    });
-  }, [inScopeVMs, migrationWanMbps]);
-
   // Filtered Table
   const filteredRecords = useMemo(() => {
-    return vmRecords.filter(vm => {
+    return ingestedVMs.filter(vm => {
       const matchesSearch =
         vm.vmName.toLowerCase().includes(searchQuery.toLowerCase()) ||
         vm.os.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -649,19 +590,21 @@ export const RVToolsAnalyzerPage: React.FC = () => {
         methodFilter === 'all' ||
         (methodFilter === 'rav' && vm.recommendedMethod === 'HCX RAV (Live vMotion)') ||
         (methodFilter === 'bulk' && vm.recommendedMethod === 'HCX Bulk Migration') ||
-        (methodFilter === 'cold' && vm.recommendedMethod === 'HCX Cold Migration');
+        (methodFilter === 'cold' && vm.recommendedMethod === 'HCX Cold Migration') ||
+        (methodFilter === 'rearchitect' && vm.recommendedMethod === 'Re-architect Required');
 
       const matchesScope =
         scopeFilter === 'all' ||
         (scopeFilter === 'inScope' && vm.scope === 'In Scope') ||
         (scopeFilter === 'outOfScope' && vm.scope === 'Out of Scope') ||
-        (scopeFilter === 'tbd' && vm.scope === 'To Be Decided');
+        (scopeFilter === 'tbd' && vm.scope === 'To Be Decided') ||
+        (scopeFilter === 'blockers' && vm.blockers.length > 0);
 
       return matchesSearch && matchesMethod && matchesScope;
     });
-  }, [vmRecords, searchQuery, methodFilter, scopeFilter]);
+  }, [ingestedVMs, searchQuery, methodFilter, scopeFilter]);
 
-  // Handoff to 4K Blueprint Generator
+  // Handoff to 4K Blueprint Generator (Zero Costing)
   const handlePushToGenerator = () => {
     try {
       const blueprintState = {
@@ -675,11 +618,11 @@ export const RVToolsAnalyzerPage: React.FC = () => {
         totalVCPUs: inScopeVCPUs,
         totalRAMGB: inScopeRAMGiB,
         totalStorageTB: inScopeStorageTiB,
-        decoupledStorageTB: inScopeDecoupledTiB,
-        monthlyRunRateUSD: sizingEngine.decoupledTotalCost,
+        decoupledStorageTB: storageAnalysis.externalUsedStorageTB,
+        storagePolicy: selectedPolicy.name,
+        limitingDriver: sizingEngine.limitingDriver,
         vlans: vlanSummary,
         hcxNePairs: hcxNePairsRequired,
-        waves: waveAnalytics.map(w => ({ title: w.title, count: w.count, storageTB: w.waveStorageTiB })),
         timestamp: new Date().toISOString()
       };
       localStorage.setItem('zaboraa_4k_blueprint_state', JSON.stringify(blueprintState));
@@ -687,80 +630,186 @@ export const RVToolsAnalyzerPage: React.FC = () => {
     navigate('/tools/design-generator');
   };
 
-  // Export 4-Tab Excel workbook with exact Base-2 values and scoping
+  // Export Technical Excel Assessment (Zero Costing)
   const handleExportExcel = () => {
-    exportMultiTabRvToolsAssessment(vmRecords, fileName, {
+    // Map IngestedVM back to ParsedVMRecord for workbook export
+    const exportRecords: ParsedVMRecord[] = ingestedVMs.map(vm => ({
+      vmName: vm.vmName,
+      scope: vm.scope,
+      isManagementInfra: vm.isManagementInfra,
+      powerState: vm.powerState === 'poweredOff' ? 'poweredOff' : 'poweredOn',
+      cpus: vm.cpus,
+      memoryGiB: vm.memoryGiB,
+      provisionedDiskGiB: vm.provisionedDiskGiB,
+      inUseDiskGiB: vm.inUseDiskGiB,
+      storageTiB: vm.storageTiB,
+      provisioningType: vm.provisioningType,
+      os: vm.os,
+      datacenter: vm.datacenter,
+      cluster: vm.cluster,
+      hasSnapshot: vm.hasSnapshot,
+      snapshotAgeHours: vm.snapshotAgeHours,
+      snapshotSizeGiB: vm.snapshotSizeGiB,
+      toolsStatus: vm.toolsStatus,
+      portGroup: vm.portGroup,
+      vlanId: vm.vlanId,
+      environment: vm.environment,
+      assignedWave: vm.assignedWave as any,
+      targetStorageTier: vm.targetStorageTier,
+      recommendedMethod: vm.recommendedMethod,
+      readinessReason: vm.blockers[0]?.description || 'Verified for cloud migration.',
+      hardwareVersion: vm.hardwareVersionNumber,
+      vnicType: vm.nics[0]?.adapterType,
+      storageController: vm.primaryController,
+      isRdmPhysical: vm.hasRdmPhysical,
+      isRdmVirtual: vm.hasRdmVirtual,
+      isMultiWriter: vm.hasMultiWriter,
+      isSharedScsi: vm.hasSharedScsiBus
+    }));
+
+    exportMultiTabRvToolsAssessment(exportRecords, fileName, {
       targetCloud: selectedSku.provider,
       nodeSku: selectedSku.name,
       cloudNodes: sizingEngine.nodesWithDecoupled,
       inScopeVMCount: inScopeVMs.length,
       totalVCPUs: inScopeVCPUs,
+      effectiveCores: sizingEngine.effectiveCores,
       totalRAMGiB: inScopeRAMGiB,
+      bufferedRAMGiB: sizingEngine.ramWithBuffer,
       totalStorageTiB: inScopeStorageTiB,
-      decoupledStorageTiB: inScopeDecoupledTiB,
-      monthlyRunRateUSD: sizingEngine.decoupledTotalCost,
-      monthlySavingsUSD: sizingEngine.monthlySavings
+      vsanStorageTiB: storageAnalysis.vsanUsedDataTB,
+      decoupledStorageTiB: storageAnalysis.externalUsedStorageTB,
+      storagePolicyApplied: selectedPolicy.name,
+      vCpuOvercommit,
+      ramBufferPercent,
+      blockersCount: allBlockers.length
     });
   };
 
   return (
-    <div className="py-12 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto space-y-10">
-      {/* Breadcrumb & Header */}
+    <div className="py-10 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto space-y-8">
+      {/* Top Header & Breadcrumbs */}
       <div className="space-y-4">
         <div className="flex items-center gap-2 text-xs font-mono text-slate-400">
           <Link to="/tools" className="hover:text-cyan-400 transition-colors">Engineering Workbench</Link>
           <span>/</span>
-          <span className="text-cyan-300">RVTools Ingestion & Precision Wave Sequencer</span>
+          <span className="text-cyan-300">RVTools Ingestion & Migration Wave Engine</span>
         </div>
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-white">
-              RVTools Ingestion, Health Analytics & 4-Wave Migration Planner
+            <div className="flex items-center gap-2 mb-1">
+              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold uppercase tracking-wider bg-cyan-500/10 text-cyan-400 border border-cyan-500/30">
+                Zero Costing Technical Assessment
+              </span>
+              <span className="text-xs text-slate-400">Enterprise Hyperscaler Migration Architecture</span>
+            </div>
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-white flex items-center gap-3">
+              <FileSpreadsheet className="w-8 h-8 text-cyan-400" />
+              <span>RVTools Ingestion, Sizing & Migration Wave Planner</span>
             </h1>
             <p className="text-sm text-slate-300 mt-1 max-w-3xl">
-              100% In-Browser Ingestion with strict Base-2 binary arithmetic. Auto-detects local management infrastructure, models decoupled hyperscaler NFS storage, sizes HCX Network Extension fleets, and sequences multi-tier execution waves.
+              Ingest multi-sheet RVTools exports (vInfo, vDisk, vMemory). Deep scan for RDMs, multi-writer shared disks, and legacy hardware. Calculate true usable storage with enterprise RAID/FTT policies, and sequence dependency-aware migration waves.
             </p>
           </div>
+
           <div className="flex flex-wrap items-center gap-2">
             <button
+              onClick={generateSampleRvToolsXlsx}
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-xs font-medium cursor-pointer"
+              title="Download sample multi-sheet RVTools export"
+            >
+              <Download className="w-3.5 h-3.5 text-cyan-400" />
+              <span>Sample Export</span>
+            </button>
+            <button
               onClick={handleExportExcel}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-500/50 text-emerald-300 text-xs font-semibold transition-all cursor-pointer shadow-sm"
-              title="Download consulting-grade 4-tab Excel workbook"
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-500/50 text-emerald-300 text-xs font-semibold cursor-pointer"
             >
               <Download className="w-3.5 h-3.5 text-emerald-400" />
-              <span>Export 4-Tab Excel (.xlsx)</span>
+              <span>Export .xlsx</span>
             </button>
             <button
               onClick={() => setShowPrintModal(true)}
-              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-xs font-medium transition-colors cursor-pointer"
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-xs font-medium cursor-pointer"
             >
               <Printer className="w-3.5 h-3.5 text-cyan-400" />
-              <span>Executive PDF Dossier</span>
+              <span>Executive PDF</span>
             </button>
             <button
               onClick={handlePushToGenerator}
               className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-cyan-400 hover:bg-cyan-300 text-slate-950 text-xs font-bold transition-all shadow-md cursor-pointer"
             >
-              <span>Send Assessment Data to 4K Blueprint Generator</span>
-              <ArrowRight className="w-3.5 h-3.5" />
+              <Sparkles className="w-3.5 h-3.5" />
+              <span>Send to Blueprint</span>
             </button>
           </div>
         </div>
       </div>
 
-      {/* Target Cloud Ecosystem & Node SKU Selection Bar */}
-      <div className="p-5 rounded-xl bg-slate-900 border border-cyan-500/30 shadow-lg space-y-4">
-      {/* Target Cloud Ecosystem & Node SKU Selection Bar */}
+      {/* File Upload & Ingestion Zone */}
+      <div className="p-6 rounded-2xl bg-slate-900/90 border border-cyan-500/40 shadow-xl backdrop-blur-md">
+        <div className="flex flex-col lg:flex-row items-center justify-between gap-6">
+          <div className="flex items-center gap-4 w-full lg:w-auto">
+            <div className="w-12 h-12 rounded-xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center shrink-0">
+              <Upload className="w-6 h-6 text-cyan-400" />
+            </div>
+            <div>
+              <div className="text-sm font-bold text-white flex items-center gap-2">
+                <span>Active RVTools Dataset:</span>
+                <span className="font-mono text-cyan-300 text-xs bg-slate-950 px-2.5 py-1 rounded border border-slate-800">
+                  {fileName}
+                </span>
+              </div>
+              <div className="text-xs text-slate-400 mt-1">
+                Parsed {ingestedVMs.length} virtual machines across vInfo, vDisk, vMemory, vNetwork, and vTools.
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3 w-full lg:w-auto justify-end">
+            <label className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs cursor-pointer shadow-lg transition-all">
+              <Upload className="w-4 h-4" />
+              <span>{isParsing ? 'Parsing Worksheets...' : 'Upload RVTools Spreadsheet'}</span>
+              <input
+                type="file"
+                accept=".xlsx,.xls"
+                onChange={handleFileUpload}
+                disabled={isParsing}
+                className="hidden"
+              />
+            </label>
+            <button
+              onClick={() => {
+                setIngestedVMs(hydrateSampleVMs(SAMPLE_ENTERPRISE_VMS));
+                setFileName('Enterprise_Production_Sample_Cluster.xlsx');
+              }}
+              className="p-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 text-xs cursor-pointer"
+              title="Reset to Sample Cluster"
+            >
+              <RefreshCw className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+
+        {uploadError && (
+          <div className="mt-4 p-3 rounded-lg bg-rose-950/80 border border-rose-500/50 text-rose-200 text-xs flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 shrink-0" />
+            <span>{uploadError}</span>
+          </div>
+        )}
+      </div>
+
+      {/* Target Cloud Ecosystem & Node SKU Selector Bar */}
       <div className="p-5 rounded-xl bg-slate-900 border border-cyan-500/30 shadow-lg space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-3">
           <div className="flex items-center gap-2">
             <Server className="w-4 h-4 text-cyan-400" />
             <span className="text-xs font-mono font-bold text-white uppercase tracking-wider">
-              Target Cloud Platform & Bare-Metal Node SKU Selector
+              Target Cloud Platform & Bare-Metal Host SKU Selector
             </span>
           </div>
           <div className="flex flex-wrap items-center gap-3">
-            {/* Ecosystem Dropdown */}
+            {/* Ecosystem Selector */}
             <div className="flex items-center gap-1.5 text-xs font-mono">
               <span className="text-slate-400">Ecosystem:</span>
               <select
@@ -779,7 +828,7 @@ export const RVToolsAnalyzerPage: React.FC = () => {
               </select>
             </div>
 
-            {/* Node SKU Dropdown */}
+            {/* Node SKU Selector */}
             <div className="flex items-center gap-1.5 text-xs font-mono">
               <span className="text-slate-400">Node SKU:</span>
               <select
@@ -814,259 +863,138 @@ export const RVToolsAnalyzerPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Dynamic Architectural Sizing Metrics for Selected SKU */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs font-mono bg-slate-950/70 p-3 rounded-lg border border-slate-800/80">
+        {/* Global Technical Parameters Bar */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs font-mono bg-slate-950/70 p-3.5 rounded-lg border border-slate-800/80">
           <div>
             <span className="text-[10px] text-slate-400 block">vCPU Overcommit Ratio</span>
-            <span className="text-cyan-300 font-bold text-sm">2.5 : 1</span>
-            <span className="text-[9px] text-slate-500 block">Effective Cores: {Math.ceil(inScopeVCPUs / 2.5)}</span>
+            <select
+              value={vCpuOvercommit}
+              onChange={e => setVCpuOvercommit(Number(e.target.value))}
+              className="bg-slate-900 border border-slate-700 text-cyan-300 font-bold px-1.5 py-0.5 rounded text-xs mt-0.5 w-full cursor-pointer"
+            >
+              <option value={1}>1:1 Ratio (Dedicated Cores)</option>
+              <option value={2}>2:1 Ratio (Balanced Enterprise)</option>
+              <option value={3}>3:1 Ratio (Standard Density)</option>
+              <option value={4}>4:1 Ratio (High-Density Dev)</option>
+            </select>
+            <span className="text-[9px] text-slate-500 block mt-0.5">Effective: {sizingEngine.effectiveCores} Cores</span>
           </div>
+
           <div>
             <span className="text-[10px] text-slate-400 block">RAM Overhead Buffer</span>
-            <span className="text-cyan-300 font-bold text-sm">+10% ESXi Buffer</span>
-            <span className="text-[9px] text-slate-500 block">Total RAM: {Math.round(inScopeRAMGiB * 1.1)} GiB</span>
+            <select
+              value={ramBufferPercent}
+              onChange={e => setRamBufferPercent(Number(e.target.value))}
+              className="bg-slate-900 border border-slate-700 text-indigo-300 font-bold px-1.5 py-0.5 rounded text-xs mt-0.5 w-full cursor-pointer"
+            >
+              <option value={10}>+10% Buffer (ESXi baseline)</option>
+              <option value={15}>+15% Buffer (Standard N+1)</option>
+              <option value={20}>+20% Buffer (High Resiliency)</option>
+            </select>
+            <span className="text-[9px] text-slate-500 block mt-0.5">Buffered: {sizingEngine.ramWithBuffer} GiB</span>
           </div>
+
           <div>
-            <span className="text-[10px] text-slate-400 block">Raw Node Storage</span>
-            <span className="text-white font-bold text-sm">{selectedSku.rawStorageTiB} TiB</span>
-            <span className="text-[9px] text-slate-500 block">Usable vSAN: {selectedSku.usableStorageTiB} TiB</span>
+            <span className="text-[10px] text-slate-400 block">Storage Policy (RAID/FTT)</span>
+            <select
+              value={storagePolicyId}
+              onChange={e => setStoragePolicyId(e.target.value as StoragePolicyId)}
+              className="bg-slate-900 border border-slate-700 text-amber-300 font-bold px-1.5 py-0.5 rounded text-xs mt-0.5 w-full cursor-pointer"
+            >
+              <option value="raid1_ftt1">RAID 1 (2x overhead)</option>
+              <option value="raid5_ftt1">RAID 5 (~1.33x overhead)</option>
+              <option value="raid6_ftt2">RAID 6 (~1.50x overhead)</option>
+            </select>
+            <span className="text-[9px] text-slate-500 block mt-0.5">Slack Factor: {slackFactorPercent}%</span>
           </div>
+
           <div>
-            <span className="text-[10px] text-slate-400 block">Decoupled NFS Target</span>
-            <span className="text-indigo-300 font-bold text-sm truncate block">{selectedSku.externalStorageName}</span>
-            <span className="text-[9px] text-slate-500 block">${selectedSku.externalStorageCostPerTiB}/TiB/Month</span>
-          </div>
-        </div>
-
-        {/* Quick SKU Preset Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-          {/* Azure VMware Solution SKUs */}
-          <div className="space-y-1.5">
-            <div className="text-[10px] font-mono font-bold text-cyan-400 uppercase">Azure VMware Solution (AVS)</div>
-            <div className="grid grid-cols-2 gap-1.5">
-              {(['avs-av36p', 'avs-av36', 'avs-av48', 'avs-av64', 'avs-av52'] as const).map(skuKey => {
-                const sku = CLOUD_SKUS[skuKey];
-                const isSelected = selectedSkuKey === skuKey;
-                return (
-                  <button
-                    key={skuKey}
-                    onClick={() => setSelectedSkuKey(skuKey)}
-                    className={`p-2 rounded-lg border text-left transition-all cursor-pointer ${
-                      isSelected
-                        ? 'bg-cyan-950/80 border-cyan-400 text-white shadow-sm'
-                        : 'bg-slate-950/60 border-slate-800 text-slate-300 hover:border-slate-700'
-                    }`}
-                  >
-                    <div className="text-[11px] font-bold font-mono flex items-center justify-between">
-                      <span>{sku.providerShort} {skuKey.replace('avs-', '').toUpperCase()}</span>
-                      {isSelected && <Check className="w-3 h-3 text-cyan-400" />}
-                    </div>
-                    <div className="text-[9px] text-slate-400 font-mono mt-0.5">
-                      {sku.cores}c · {sku.ramGiB}G · {sku.usableStorageTiB}T
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Google Cloud VMware Engine SKUs */}
-          <div className="space-y-1.5">
-            <div className="text-[10px] font-mono font-bold text-blue-400 uppercase">Google Cloud VMware Engine (GCVE)</div>
-            <div className="grid grid-cols-1 gap-1.5">
-              {(['gcve-ve1', 'gcve-ve2'] as const).map(skuKey => {
-                const sku = CLOUD_SKUS[skuKey];
-                const isSelected = selectedSkuKey === skuKey;
-                return (
-                  <button
-                    key={skuKey}
-                    onClick={() => setSelectedSkuKey(skuKey)}
-                    className={`p-2 rounded-lg border text-left transition-all cursor-pointer ${
-                      isSelected
-                        ? 'bg-blue-950/80 border-blue-400 text-white shadow-sm'
-                        : 'bg-slate-950/60 border-slate-800 text-slate-300 hover:border-slate-700'
-                    }`}
-                  >
-                    <div className="text-[11px] font-bold font-mono flex items-center justify-between">
-                      <span>{sku.name}</span>
-                      {isSelected && <Check className="w-3 h-3 text-blue-400" />}
-                    </div>
-                    <div className="text-[9px] text-slate-400 font-mono mt-0.5">
-                      {sku.cores} Cores · {sku.ramGiB} GiB RAM · {sku.usableStorageTiB} TiB vSAN
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* VMware Cloud on AWS SKUs */}
-          <div className="space-y-1.5">
-            <div className="text-[10px] font-mono font-bold text-amber-400 uppercase">VMware Cloud on AWS (VMC)</div>
-            <div className="grid grid-cols-1 gap-1.5">
-              {(['vmc-i4i', 'vmc-i3en', 'vmc-m7i'] as const).map(skuKey => {
-                const sku = CLOUD_SKUS[skuKey];
-                const isSelected = selectedSkuKey === skuKey;
-                return (
-                  <button
-                    key={skuKey}
-                    onClick={() => setSelectedSkuKey(skuKey)}
-                    className={`p-2 rounded-lg border text-left transition-all cursor-pointer ${
-                      isSelected
-                        ? 'bg-amber-950/80 border-amber-400 text-white shadow-sm'
-                        : 'bg-slate-950/60 border-slate-800 text-slate-300 hover:border-slate-700'
-                    }`}
-                  >
-                    <div className="text-[11px] font-bold font-mono flex items-center justify-between">
-                      <span>{sku.name}</span>
-                      {isSelected && <Check className="w-3 h-3 text-amber-400" />}
-                    </div>
-                    <div className="text-[9px] text-slate-400 font-mono mt-0.5">
-                      {sku.cores} Cores · {sku.ramGiB} GiB RAM · {sku.usableStorageTiB} TiB vSAN
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
+            <span className="text-[10px] text-slate-400 block">Decoupled External NFS</span>
+            <span className="text-emerald-300 font-bold text-xs truncate block mt-0.5">{selectedSku.externalStorageName}</span>
+            <span className="text-[9px] text-slate-400 block mt-0.5">{storageAnalysis.externalUsedStorageTB} TiB Offloaded</span>
           </div>
         </div>
       </div>
 
-      {/* Critical Health Warnings Banner */}
-      {(criticalSnapshots.length > 0 || outdatedTools.length > 0) && (
-        <div className="p-4 rounded-xl bg-rose-950/40 border border-rose-500/40 space-y-3">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-rose-500/20 pb-2">
+      {/* Critical Blockers Alert Ribbon */}
+      {criticalBlockers.length > 0 && (
+        <div className="p-4 rounded-xl bg-rose-950/40 border border-rose-500/50 space-y-3">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-rose-500/20 pb-2">
             <div className="flex items-center gap-2 text-rose-300 text-xs font-bold">
-              <AlertTriangle className="w-4 h-4 text-rose-400" />
-              <span>Pre-Migration Risk Matrix: Remediation Required Before Migration Execution</span>
+              <ShieldAlert className="w-5 h-5 text-rose-400 shrink-0" />
+              <span>Migration Blocker Warning: {criticalBlockers.length} Workloads require pre-cutover remediation!</span>
             </div>
-            <button
-              onClick={() => setShowRemediationModal(true)}
-              className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md bg-rose-900/80 hover:bg-rose-800 border border-rose-400/50 text-rose-200 text-xs font-semibold transition-colors cursor-pointer"
-            >
-              <ListChecks className="w-3.5 h-3.5 text-rose-300" />
-              <span>Open Actionable Remediation Checklist</span>
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setActiveTab('blockers')}
+                className="px-3 py-1 rounded bg-rose-900/80 hover:bg-rose-800 text-rose-100 text-xs font-semibold cursor-pointer border border-rose-500/50"
+              >
+                Inspect Blockers
+              </button>
+              <button
+                onClick={() => setShowRemediationModal(true)}
+                className="px-3 py-1 rounded bg-slate-900 hover:bg-slate-800 text-slate-200 text-xs cursor-pointer border border-slate-700"
+              >
+                Remediation Checklist
+              </button>
+            </div>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
-            {criticalSnapshots.length > 0 && (
-              <div className="p-3 rounded-lg bg-slate-950/80 border border-rose-500/30 flex items-start gap-2.5">
-                <span className="px-2 py-0.5 rounded bg-rose-950 text-rose-300 text-[10px] font-mono font-bold shrink-0 mt-0.5">
-                  SNAPSHOT RISK
-                </span>
-                <div className="text-slate-300 text-[11px] leading-relaxed">
-                  <span className="font-bold text-white">{criticalSnapshots.length} VMs</span> contain active snapshots &gt;24 hours or &gt;20 GiB ({criticalSnapshots.map(v => v.vmName).join(', ')}).
-                  <span className="text-rose-400 font-semibold block mt-0.5">Action: Commit Snapshots Before Migration to avoid lock corruption during HCX replication.</span>
-                </div>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs font-mono">
+            {rdmPhysicalVMs.length > 0 && (
+              <div className="bg-rose-950/80 p-2 rounded border border-rose-600/40 text-rose-200">
+                <span className="text-[10px] text-rose-400 block">RDM Physical Mode</span>
+                <span className="font-bold">{rdmPhysicalVMs.length} VMs Flagged</span>
               </div>
             )}
-            {outdatedTools.length > 0 && (
-              <div className="p-3 rounded-lg bg-slate-950/80 border border-amber-500/30 flex items-start gap-2.5">
-                <span className="px-2 py-0.5 rounded bg-amber-950 text-amber-300 text-[10px] font-mono font-bold shrink-0 mt-0.5">
-                  VMWARE TOOLS
-                </span>
-                <div className="text-slate-300 text-[11px] leading-relaxed">
-                  <span className="font-bold text-white">{outdatedTools.length} VMs</span> have outdated or missing VMware Tools.
-                  <span className="text-amber-400 font-semibold block mt-0.5">Action: Install/Update VMware Tools prior to cutover to allow quiesced snapshots and guest OS NIC customization.</span>
-                </div>
+            {sharedScsiVMs.length > 0 && (
+              <div className="bg-rose-950/80 p-2 rounded border border-rose-600/40 text-rose-200">
+                <span className="text-[10px] text-rose-400 block">Multi-Writer / Shared SCSI</span>
+                <span className="font-bold">{sharedScsiVMs.length} VMs Flagged</span>
+              </div>
+            )}
+            {legacyVnicVMs.length > 0 && (
+              <div className="bg-amber-950/80 p-2 rounded border border-amber-600/40 text-amber-200">
+                <span className="text-[10px] text-amber-400 block">Legacy E1000/E1000E vNIC</span>
+                <span className="font-bold">{legacyVnicVMs.length} VMs Flagged</span>
+              </div>
+            )}
+            {criticalSnapshotsVMs.length > 0 && (
+              <div className="bg-rose-950/80 p-2 rounded border border-rose-600/40 text-rose-200">
+                <span className="text-[10px] text-rose-400 block">Stale Snapshots (&gt;24h)</span>
+                <span className="font-bold">{criticalSnapshotsVMs.length} VMs Flagged</span>
               </div>
             )}
           </div>
         </div>
       )}
 
-      {/* Upload Zone & Quick Sample Ingestion */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="md:col-span-2 p-6 rounded-xl bg-slate-900/80 border border-dashed border-slate-700 hover:border-cyan-500/60 transition-colors flex flex-col items-center justify-center text-center relative group">
-          <input
-            type="file"
-            accept=".xlsx,.xls,.csv"
-            onChange={handleFileUpload}
-            className="absolute inset-0 opacity-0 cursor-pointer z-10"
-          />
-          <div className="p-3 rounded-full bg-slate-800 text-cyan-400 mb-2 group-hover:scale-110 transition-transform">
-            <Upload className="w-6 h-6" />
-          </div>
-          <div className="text-sm font-bold text-white">
-            {isParsing ? 'Parsing RVTools Multi-Tab Workbook...' : 'Drop RVTools .xlsx File Here'}
-          </div>
-          <div className="text-xs text-slate-400 mt-0.5">
-            Cross-references vInfo, vDisk, vSnapshot, vNetwork, and vTools. Strict Base-2 math.
-          </div>
-          <div className="text-[11px] font-mono text-cyan-300 mt-2">
-            Active file: <span className="font-bold">{fileName}</span>
-          </div>
-          {uploadError && (
-            <div className="mt-2 text-xs text-rose-400 bg-rose-950/60 border border-rose-500/40 px-3 py-1 rounded">
-              {uploadError}
-            </div>
-          )}
-        </div>
-
-        <div className="p-6 rounded-xl bg-slate-900/80 border border-slate-800 flex flex-col justify-between space-y-4">
-          <div className="space-y-1.5">
-            <div className="text-xs font-mono text-cyan-400 font-semibold uppercase">Instant Demo & Template</div>
-            <h3 className="text-sm font-bold text-white">Need a Multi-Tier Dataset?</h3>
-            <p className="text-xs text-slate-400 leading-relaxed">
-              Load our pre-configured enterprise cluster representing Oracle DBs, SQL Always-On, Kafka, and Domain Controllers.
-            </p>
-          </div>
-          <div className="space-y-2">
-            <button
-              onClick={() => {
-                setVmRecords(SAMPLE_ENTERPRISE_VMS);
-                setFileName('Enterprise_Production_Sample_Cluster.xlsx');
-                setUploadError(null);
-              }}
-              className="w-full py-2 px-3 rounded-lg bg-slate-800 hover:bg-slate-700 border border-cyan-500/30 text-cyan-300 text-xs font-semibold flex items-center justify-center gap-2 transition-colors cursor-pointer"
-            >
-              <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
-              <span>Load Enterprise Cluster (12 VMs)</span>
-            </button>
-            <button
-              onClick={generateSampleRvToolsXlsx}
-              className="w-full py-2 px-3 rounded-lg bg-slate-950 hover:bg-slate-800 border border-slate-700 text-slate-300 text-xs font-medium flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
-            >
-              <Download className="w-3.5 h-3.5 text-slate-400" />
-              <span>Download Blank Sample .xlsx</span>
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* KPI Sizing Summary & Hyperscaler Storage Decoupling Impact */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-        {/* Metric Badges (Strictly In-Scope vs All Assessed) */}
+      {/* Top Engineering Metrics Bar (Zero Costing) */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+        {/* Workload Inventory Sizing (7 Cols) */}
         <div className="lg:col-span-7 grid grid-cols-2 sm:grid-cols-4 gap-3">
           <div className="p-4 rounded-xl bg-slate-900 border border-slate-800 text-center space-y-1">
-            <div className="text-[11px] font-mono text-slate-400">In-Scope Workloads</div>
-            <div className="text-2xl font-black text-white font-mono">
-              {inScopeVMs.length} <span className="text-xs text-slate-400">/ {totalAssessedVMs}</span>
-            </div>
-            <div className="text-[10px] text-amber-400/90 font-mono">
-              {outOfScopeVMs.length} Excluded (Mgmt)
-            </div>
+            <div className="text-[11px] font-mono text-slate-400">In-Scope VMs</div>
+            <div className="text-2xl font-black text-white font-mono">{inScopeVMs.length}</div>
+            <div className="text-[10px] text-slate-500">{ingestedVMs.length} Total Assessed</div>
           </div>
           <div className="p-4 rounded-xl bg-slate-900 border border-slate-800 text-center space-y-1">
-            <div className="text-[11px] font-mono text-slate-400">In-Scope vCPUs</div>
+            <div className="text-[11px] font-mono text-slate-400">Raw vCPUs</div>
             <div className="text-2xl font-black text-cyan-300 font-mono">{inScopeVCPUs}</div>
-            <div className="text-[10px] text-slate-500">2.5:1 Overcommit</div>
+            <div className="text-[10px] text-slate-500">{vCpuOvercommit}:1 Overcommit</div>
           </div>
           <div className="p-4 rounded-xl bg-slate-900 border border-slate-800 text-center space-y-1">
-            <div className="text-[11px] font-mono text-slate-400">In-Scope RAM (GiB)</div>
-            <div className="text-2xl font-black text-cyan-300 font-mono">
-              {inScopeRAMGiB >= 1024 ? `${(inScopeRAMGiB / 1024).toFixed(1)} TiB` : `${inScopeRAMGiB} GiB`}
-            </div>
-            <div className="text-[10px] text-slate-500">Base-2 (MiB/1024)</div>
+            <div className="text-[11px] font-mono text-slate-400">RAM (GiB)</div>
+            <div className="text-2xl font-black text-indigo-300 font-mono">{inScopeRAMGiB}</div>
+            <div className="text-[10px] text-slate-500">+{ramBufferPercent}% Buffer</div>
           </div>
           <div className="p-4 rounded-xl bg-slate-900 border border-slate-800 text-center space-y-1">
-            <div className="text-[11px] font-mono text-slate-400">In-Scope Storage</div>
-            <div className="text-2xl font-black text-emerald-400 font-mono">{inScopeStorageTiB} TiB</div>
-            <div className="text-[10px] text-slate-500">{thinCount} Thin · {thickCount} Thick</div>
+            <div className="text-[11px] font-mono text-slate-400">In-Use Storage</div>
+            <div className="text-2xl font-black text-emerald-400 font-mono">{inScopeStorageTiB} <span className="text-xs font-normal">TiB</span></div>
+            <div className="text-[10px] text-slate-500">Base-2 Exact Math</div>
           </div>
         </div>
 
-        {/* Hyperscaler Storage Decoupling & Cluster Sizing Card (5 Cols) */}
+        {/* Cluster Host Sizing Card (5 Cols - Zero Costing) */}
         <div className="lg:col-span-5 p-4 rounded-xl bg-slate-900/90 border border-cyan-500/40 shadow-xl space-y-3">
           <div className="flex items-center justify-between border-b border-slate-800 pb-2">
             <div className="text-xs font-mono font-bold text-cyan-400 uppercase flex items-center gap-1.5">
@@ -1074,52 +1002,49 @@ export const RVToolsAnalyzerPage: React.FC = () => {
               <span>{selectedSku.name} Sizing</span>
             </div>
             <span className="text-[10px] font-mono text-emerald-400 font-bold">
-              Min 3-Node HA Cluster
+              N+1 Resilient
             </span>
           </div>
 
           <div className="grid grid-cols-2 gap-2 text-xs font-mono">
             <div className="p-2.5 rounded-lg bg-slate-950 border border-slate-800">
-              <div className="text-[10px] text-slate-400">Required Cloud Nodes</div>
+              <div className="text-[10px] text-slate-400">Required Cloud Hosts</div>
               <div className="text-xl font-bold text-white mt-0.5">
-                {sizingEngine.nodesWithDecoupled} <span className="text-xs text-slate-400">Nodes</span>
+                {sizingEngine.nodesWithDecoupled} <span className="text-xs text-slate-400">Hosts</span>
               </div>
               {sizingEngine.nodeReduction > 0 && (
-                <div className="text-[9px] text-emerald-400 font-semibold mt-0.5 flex items-center gap-1">
-                  <TrendingDown className="w-2.5 h-2.5" />
-                  <span>Reduced from {sizingEngine.nodesWithoutDecoupled} nodes</span>
+                <div className="text-[9px] text-emerald-400 font-semibold mt-0.5">
+                  Decoupled saves {sizingEngine.nodeReduction} hosts
                 </div>
               )}
             </div>
 
             <div className="p-2.5 rounded-lg bg-slate-950 border border-slate-800">
-              <div className="text-[10px] text-slate-400">Monthly Run-Rate</div>
-              <div className="text-xl font-bold text-cyan-300 mt-0.5">
-                ${sizingEngine.decoupledTotalCost.toLocaleString()}
+              <div className="text-[10px] text-slate-400">Limiting Constraint</div>
+              <div className="text-sm font-bold text-amber-300 mt-0.5 truncate">
+                {sizingEngine.limitingDriver}
               </div>
-              {sizingEngine.monthlySavings > 0 && (
-                <div className="text-[9px] text-emerald-400 font-semibold mt-0.5">
-                  Saves ${sizingEngine.monthlySavings.toLocaleString()}/mo
-                </div>
-              )}
+              <div className="text-[9px] text-slate-500 mt-0.5">
+                {selectedPolicy.shortLabel}
+              </div>
             </div>
           </div>
 
           <div className="p-2.5 rounded-lg bg-slate-950/80 border border-slate-800/80 text-[11px] font-mono space-y-1">
             <div className="flex justify-between text-slate-400">
-              <span>External NFS Offloaded ({selectedSku.externalStorageName}):</span>
-              <span className="text-cyan-300 font-bold">{inScopeDecoupledTiB} TiB</span>
+              <span>Local vSAN Usable Footprint:</span>
+              <span className="text-cyan-300 font-bold">{storageAnalysis.vsanUsedDataTB} TiB</span>
             </div>
             <div className="flex justify-between text-slate-400">
-              <span>Remaining Local vSAN Footprint:</span>
-              <span className="text-white font-bold">{inScopeLocalVsanTiB} TiB</span>
+              <span>Offloaded to External NFS ({selectedSku.externalStorageName}):</span>
+              <span className="text-emerald-300 font-bold">{storageAnalysis.externalUsedStorageTB} TiB</span>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Main Tabbed Analysis Views (Inventory, 4-Wave Planner, Stretched VLANs) */}
-      <div className="p-6 rounded-xl bg-slate-900/60 border border-slate-800 space-y-6">
+      {/* Main Tabbed Analysis Navigation */}
+      <div className="p-6 rounded-2xl bg-slate-900/60 border border-slate-800 space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800 pb-4">
           <div className="flex flex-wrap items-center gap-2 text-xs font-semibold">
             <button
@@ -1128,7 +1053,7 @@ export const RVToolsAnalyzerPage: React.FC = () => {
                 activeTab === 'inventory' ? 'bg-cyan-500 text-slate-950 font-bold' : 'text-slate-400 hover:text-white'
               }`}
             >
-              Workload Inventory ({totalAssessedVMs})
+              Workload Inventory ({ingestedVMs.length})
             </button>
             <button
               onClick={() => setActiveTab('waves')}
@@ -1137,7 +1062,25 @@ export const RVToolsAnalyzerPage: React.FC = () => {
               }`}
             >
               <Calendar className="w-3.5 h-3.5" />
-              <span>4-Wave Sequence Planner ({inScopeVMs.length} In-Scope)</span>
+              <span>Migration Wave Planner ({inScopeVMs.length} In-Scope)</span>
+            </button>
+            <button
+              onClick={() => setActiveTab('blockers')}
+              className={`px-3 py-1.5 rounded-lg transition-colors cursor-pointer flex items-center gap-1.5 ${
+                activeTab === 'blockers' ? 'bg-cyan-500 text-slate-950 font-bold' : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              <ShieldAlert className="w-3.5 h-3.5 text-rose-400" />
+              <span>Blockers & Readiness Scanner ({allBlockers.length})</span>
+            </button>
+            <button
+              onClick={() => setActiveTab('storage')}
+              className={`px-3 py-1.5 rounded-lg transition-colors cursor-pointer flex items-center gap-1.5 ${
+                activeTab === 'storage' ? 'bg-cyan-500 text-slate-950 font-bold' : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              <HardDrive className="w-3.5 h-3.5" />
+              <span>Storage Policy & Capacity Sizing</span>
             </button>
             <button
               onClick={() => setActiveTab('vlans')}
@@ -1146,336 +1089,496 @@ export const RVToolsAnalyzerPage: React.FC = () => {
               }`}
             >
               <Wifi className="w-3.5 h-3.5" />
-              <span>Stretched L2 Decision Matrix ({vlanSummary.length} VLANs)</span>
+              <span>Stretched L2 VLANs ({vlanSummary.length})</span>
             </button>
           </div>
-
-          {activeTab === 'waves' && (
-            <div className="flex items-center gap-2 text-xs font-mono">
-              <span className="text-slate-400">Replication WAN:</span>
-              <select
-                value={migrationWanMbps}
-                onChange={e => setMigrationWanMbps(Number(e.target.value))}
-                className="bg-slate-950 border border-slate-700 px-2 py-1 rounded text-cyan-300 font-bold cursor-pointer"
-              >
-                <option value={100}>100 Mbps (Standard VPN)</option>
-                <option value={200}>200 Mbps (Dual VPN)</option>
-                <option value={500}>500 Mbps (DirectConnect / ER Lite)</option>
-                <option value={1000}>1 Gbps (Standard Dedicated)</option>
-                <option value={2000}>2 Gbps (Aggregated Circuits)</option>
-                <option value={5000}>5 Gbps (High-Throughput)</option>
-                <option value={10000}>10 Gbps (ExpressRoute Direct)</option>
-              </select>
-            </div>
-          )}
         </div>
 
-        {/* TAB 1: WORKLOAD INVENTORY */}
+        {/* Tab 1: Workload Inventory */}
         {activeTab === 'inventory' && (
           <div className="space-y-4">
-            <div className="flex flex-col sm:flex-row gap-3">
-              <div className="relative flex-1">
-                <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+            {/* Search and Filter Ribbon */}
+            <div className="flex flex-col md:flex-row gap-3 items-center justify-between">
+              <div className="relative w-full md:w-96">
+                <Search className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
                 <input
                   type="text"
-                  placeholder="Search by VM name, operating system, cluster, port group, or environment..."
+                  placeholder="Search VM name, OS, cluster, VLAN, port group..."
                   value={searchQuery}
                   onChange={e => setSearchQuery(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 bg-slate-950 border border-slate-800 rounded-lg text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-cyan-500"
+                  className="w-full pl-9 pr-4 py-2 bg-slate-950 border border-slate-700/80 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500"
                 />
               </div>
 
-              {/* Scope filter */}
-              <div className="flex items-center gap-1 bg-slate-950 p-1 rounded-lg border border-slate-800 text-xs font-medium">
-                <button
-                  onClick={() => setScopeFilter('all')}
-                  className={`px-2.5 py-1 rounded cursor-pointer ${scopeFilter === 'all' ? 'bg-cyan-500 text-slate-950 font-bold' : 'text-slate-400'}`}
+              <div className="flex items-center gap-2 w-full md:w-auto overflow-x-auto pb-1">
+                <select
+                  value={scopeFilter}
+                  onChange={e => setScopeFilter(e.target.value)}
+                  className="bg-slate-950 border border-slate-700 text-slate-300 text-xs px-2.5 py-2 rounded-lg cursor-pointer"
                 >
-                  All Scopes
-                </button>
-                <button
-                  onClick={() => setScopeFilter('inScope')}
-                  className={`px-2.5 py-1 rounded cursor-pointer ${scopeFilter === 'inScope' ? 'bg-cyan-500 text-slate-950 font-bold' : 'text-slate-400'}`}
-                >
-                  In Scope ({inScopeVMs.length})
-                </button>
-                <button
-                  onClick={() => setScopeFilter('outOfScope')}
-                  className={`px-2.5 py-1 rounded cursor-pointer ${scopeFilter === 'outOfScope' ? 'bg-cyan-500 text-slate-950 font-bold' : 'text-slate-400'}`}
-                >
-                  Out of Scope ({outOfScopeVMs.length})
-                </button>
-              </div>
+                  <option value="all">All Scopes</option>
+                  <option value="inScope">In Scope Only</option>
+                  <option value="outOfScope">Out of Scope</option>
+                  <option value="blockers">Has Blockers</option>
+                </select>
 
-              {/* HCX Method Filter */}
-              <div className="flex items-center gap-1 bg-slate-950 p-1 rounded-lg border border-slate-800 text-xs font-medium">
-                <button
-                  onClick={() => setMethodFilter('all')}
-                  className={`px-2.5 py-1 rounded cursor-pointer ${methodFilter === 'all' ? 'bg-cyan-500 text-slate-950 font-bold' : 'text-slate-400'}`}
+                <select
+                  value={methodFilter}
+                  onChange={e => setMethodFilter(e.target.value)}
+                  className="bg-slate-950 border border-slate-700 text-slate-300 text-xs px-2.5 py-2 rounded-lg cursor-pointer"
                 >
-                  All Methods
-                </button>
-                <button
-                  onClick={() => setMethodFilter('rav')}
-                  className={`px-2.5 py-1 rounded cursor-pointer ${methodFilter === 'rav' ? 'bg-cyan-500 text-slate-950 font-bold' : 'text-slate-400'}`}
-                >
-                  RAV
-                </button>
-                <button
-                  onClick={() => setMethodFilter('bulk')}
-                  className={`px-2.5 py-1 rounded cursor-pointer ${methodFilter === 'bulk' ? 'bg-cyan-500 text-slate-950 font-bold' : 'text-slate-400'}`}
-                >
-                  Bulk
-                </button>
+                  <option value="all">All HCX Methods</option>
+                  <option value="rav">RAV (Live vMotion)</option>
+                  <option value="bulk">Bulk Migration</option>
+                  <option value="cold">Cold Migration</option>
+                  <option value="rearchitect">Re-architect Required</option>
+                </select>
               </div>
             </div>
 
-            <div className="overflow-x-auto border border-slate-800 rounded-lg">
-              <table className="w-full text-left text-xs">
-                <thead className="bg-slate-950 text-slate-400 font-mono uppercase text-[10px] border-b border-slate-800">
+            {/* Inventory Table */}
+            <div className="overflow-x-auto rounded-xl border border-slate-800">
+              <table className="w-full text-left text-xs font-mono">
+                <thead className="bg-slate-950 text-slate-400 border-b border-slate-800 text-[11px]">
                   <tr>
-                    <th className="py-2.5 px-3">Virtual Machine</th>
-                    <th className="py-2.5 px-2">Migration Scope</th>
-                    <th className="py-2.5 px-2">Env</th>
-                    <th className="py-2.5 px-2">Wave</th>
-                    <th className="py-2.5 px-2">vCPU</th>
-                    <th className="py-2.5 px-2">RAM (GiB)</th>
-                    <th className="py-2.5 px-2">Capacity (TiB)</th>
-                    <th className="py-2.5 px-2">Storage Tier</th>
-                    <th className="py-2.5 px-3">Port Group & VLAN</th>
-                    <th className="py-2.5 px-3">Health & Tools</th>
-                    <th className="py-2.5 px-3">HCX Path</th>
+                    <th className="py-3 px-3">Scope</th>
+                    <th className="py-3 px-3">VM Name</th>
+                    <th className="py-3 px-2">vCPU</th>
+                    <th className="py-3 px-2">RAM</th>
+                    <th className="py-3 px-2">Storage (Used)</th>
+                    <th className="py-3 px-2">Storage Tier</th>
+                    <th className="py-3 px-2">vNIC</th>
+                    <th className="py-3 px-2">Controller</th>
+                    <th className="py-3 px-2">HW</th>
+                    <th className="py-3 px-2">Method</th>
+                    <th className="py-3 px-3 text-right">Readiness & Blockers</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-800/60 font-mono text-[11px] text-slate-300">
-                  {filteredRecords.map((vm, idx) => (
-                    <tr
-                      key={idx}
-                      className={`hover:bg-slate-800/40 transition-colors ${
-                        vm.scope === 'Out of Scope' ? 'opacity-60 bg-slate-950/40' : ''
-                      }`}
-                    >
-                      <td className="py-2.5 px-3 font-bold text-white">
-                        <div className="flex items-center gap-1.5">
-                          <span>{vm.vmName}</span>
-                          {vm.isManagementInfra && (
-                            <span className="px-1.5 py-0.2 rounded bg-amber-950/80 border border-amber-500/50 text-amber-300 text-[9px] font-bold" title="Auto-detected management infrastructure network">
-                              MGMT INFRA
+                <tbody className="divide-y divide-slate-800/60 bg-slate-900/50">
+                  {filteredRecords.map(vm => {
+                    const hasBlocker = vm.blockers.length > 0;
+                    return (
+                      <tr key={vm.vmName} className="hover:bg-slate-800/40 transition-colors">
+                        <td className="py-2.5 px-3">
+                          <button
+                            onClick={() => toggleScope(vm.vmName)}
+                            className={`px-2 py-0.5 rounded text-[10px] font-bold cursor-pointer transition-colors border ${
+                              vm.scope === 'In Scope'
+                                ? 'bg-emerald-950 text-emerald-300 border-emerald-600/60'
+                                : vm.scope === 'Out of Scope'
+                                ? 'bg-rose-950 text-rose-300 border-rose-800/60'
+                                : 'bg-slate-800 text-slate-300 border-slate-700'
+                            }`}
+                          >
+                            {vm.scope}
+                          </button>
+                        </td>
+                        <td className="py-2.5 px-3 font-semibold text-white">
+                          <div className="flex items-center gap-1.5">
+                            <span className={`w-1.5 h-1.5 rounded-full ${vm.powerState === 'poweredOn' ? 'bg-emerald-400' : 'bg-slate-500'}`} />
+                            <span>{vm.vmName}</span>
+                          </div>
+                          <div className="text-[10px] text-slate-400 truncate max-w-[200px]">{vm.os}</div>
+                        </td>
+                        <td className="py-2.5 px-2 text-slate-300">{vm.cpus} vCPU</td>
+                        <td className="py-2.5 px-2 text-slate-300">{vm.memoryGiB} GiB</td>
+                        <td className="py-2.5 px-2 text-slate-300">
+                          {vm.storageTiB} TiB
+                          <span className="text-[10px] text-slate-500 block">{vm.inUseDiskGiB} GiB</span>
+                        </td>
+                        <td className="py-2.5 px-2">
+                          <button
+                            onClick={() => toggleStorageTier(vm.vmName)}
+                            className={`text-[10px] px-2 py-0.5 rounded cursor-pointer border ${
+                              vm.targetStorageTier === 'External NFS'
+                                ? 'bg-emerald-950 text-emerald-300 border-emerald-700'
+                                : 'bg-cyan-950 text-cyan-300 border-cyan-700'
+                            }`}
+                          >
+                            {vm.targetStorageTier}
+                          </button>
+                        </td>
+                        <td className="py-2.5 px-2 text-[11px]">
+                          <span className={vm.hasLegacyVnic ? 'text-amber-400 font-bold' : 'text-slate-300'}>
+                            {vm.nics[0]?.adapterType || 'VMXNET3'}
+                          </span>
+                        </td>
+                        <td className="py-2.5 px-2 text-[11px]">
+                          <span className={vm.hasLegacyController ? 'text-amber-400 font-bold' : 'text-slate-300'}>
+                            {vm.primaryController}
+                          </span>
+                        </td>
+                        <td className="py-2.5 px-2 text-[11px]">
+                          <span className={vm.isHardwareObsolete ? 'text-rose-400 font-bold' : 'text-slate-300'}>
+                            vHW {vm.hardwareVersionNumber}
+                          </span>
+                        </td>
+                        <td className="py-2.5 px-2">
+                          <span
+                            className={`text-[10px] px-2 py-0.5 rounded font-mono ${
+                              vm.recommendedMethod === 'HCX RAV (Live vMotion)'
+                                ? 'bg-emerald-950/80 text-emerald-300 border border-emerald-800'
+                                : vm.recommendedMethod === 'HCX Bulk Migration'
+                                ? 'bg-cyan-950/80 text-cyan-300 border border-cyan-800'
+                                : vm.recommendedMethod === 'HCX Cold Migration'
+                                ? 'bg-amber-950/80 text-amber-300 border border-amber-800'
+                                : 'bg-rose-950/80 text-rose-300 border border-rose-800'
+                            }`}
+                          >
+                            {vm.recommendedMethod.replace('HCX ', '')}
+                          </span>
+                        </td>
+                        <td className="py-2.5 px-3 text-right">
+                          {hasBlocker ? (
+                            <div className="flex flex-col items-end gap-1">
+                              {vm.blockers.map(b => (
+                                <span
+                                  key={b.id}
+                                  className={`text-[10px] px-1.5 py-0.5 rounded flex items-center gap-1 ${
+                                    b.severity === 'CRITICAL'
+                                      ? 'bg-rose-950 text-rose-300 border border-rose-800'
+                                      : 'bg-amber-950 text-amber-300 border border-amber-800'
+                                  }`}
+                                  title={b.remediationAction}
+                                >
+                                  <AlertTriangle className="w-2.5 h-2.5" />
+                                  <span>{b.title}</span>
+                                </span>
+                              ))}
+                            </div>
+                          ) : (
+                            <span className="text-[10px] text-emerald-400 flex items-center justify-end gap-1">
+                              <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+                              <span>Ready ({vm.readinessScore}/100)</span>
                             </span>
                           )}
-                        </div>
-                        <div className="text-[9px] text-slate-500 font-mono mt-0.5">{vm.os}</div>
-                      </td>
-
-                      {/* Scope Dropdown */}
-                      <td className="py-2.5 px-2">
-                        <select
-                          value={vm.scope}
-                          onChange={e => handleScopeChange(vm.vmName, e.target.value as VMScope)}
-                          className={`border px-1.5 py-0.5 rounded text-[10px] font-bold cursor-pointer ${
-                            vm.scope === 'In Scope'
-                              ? 'bg-emerald-950/80 border-emerald-500/50 text-emerald-300'
-                              : vm.scope === 'Out of Scope'
-                              ? 'bg-rose-950/80 border-rose-500/50 text-rose-300'
-                              : 'bg-amber-950/80 border-amber-500/50 text-amber-300'
-                          }`}
-                        >
-                          <option value="In Scope">In Scope</option>
-                          <option value="Out of Scope">Out of Scope</option>
-                          <option value="To Be Decided">To Be Decided</option>
-                        </select>
-                      </td>
-
-                      {/* Environment Dropdown */}
-                      <td className="py-2.5 px-2">
-                        <select
-                          value={vm.environment}
-                          onChange={e => handleEnvironmentChange(vm.vmName, e.target.value as VMEnvironment)}
-                          className="bg-slate-950 border border-slate-700 px-1.5 py-0.5 rounded text-[10px] text-slate-300 cursor-pointer"
-                        >
-                          <option value="Dev">Dev</option>
-                          <option value="Staging">Staging</option>
-                          <option value="QA">QA</option>
-                          <option value="UAT">UAT</option>
-                          <option value="Pre-Prod">Pre-Prod</option>
-                          <option value="Prod">Prod</option>
-                          <option value="DR">DR</option>
-                        </select>
-                      </td>
-
-                      {/* Wave Dropdown */}
-                      <td className="py-2.5 px-2">
-                        <select
-                          value={vm.assignedWave}
-                          onChange={e => handleWaveOverride(vm.vmName, Number(e.target.value) as any)}
-                          className="bg-slate-950 border border-slate-700 px-1.5 py-0.5 rounded text-[10px] text-cyan-300 font-bold cursor-pointer"
-                        >
-                          <option value={0}>W0</option>
-                          <option value={1}>W1</option>
-                          <option value={2}>W2</option>
-                          <option value={3}>W3</option>
-                        </select>
-                      </td>
-
-                      <td className="py-2.5 px-2 text-cyan-300">{vm.cpus}</td>
-                      <td className="py-2.5 px-2">{vm.memoryGiB} GiB</td>
-                      <td className="py-2.5 px-2">
-                        <span className="font-bold text-white">{vm.storageTiB} TiB</span>
-                        <span className="text-[9px] text-slate-500 block">({vm.provisionedDiskGiB} GiB {vm.provisioningType})</span>
-                      </td>
-
-                      {/* Target Storage Tier Selector */}
-                      <td className="py-2.5 px-2">
-                        <select
-                          value={vm.targetStorageTier}
-                          onChange={e => handleStorageTierChange(vm.vmName, e.target.value as StorageTierOption)}
-                          className={`border px-1.5 py-0.5 rounded text-[10px] font-semibold cursor-pointer ${
-                            vm.targetStorageTier === 'External NFS'
-                              ? 'bg-indigo-950 border-indigo-500/50 text-indigo-300'
-                              : 'bg-slate-950 border-slate-700 text-slate-300'
-                          }`}
-                        >
-                          <option value="Local vSAN">Local vSAN</option>
-                          <option value="External NFS">External NFS</option>
-                        </select>
-                      </td>
-
-                      <td className="py-2.5 px-3 text-slate-300">
-                        <div className="font-bold">{vm.portGroup}</div>
-                        <div className="text-[10px] text-cyan-400">VLAN {vm.vlanId}</div>
-                      </td>
-
-                      {/* Health & Tools */}
-                      <td className="py-2.5 px-3">
-                        {vm.hasSnapshot && (vm.snapshotAgeHours > 24 || vm.snapshotSizeGiB > 20) ? (
-                          <span className="text-rose-400 font-bold flex items-center gap-1 text-[10px]">
-                            <AlertTriangle className="w-3 h-3 text-rose-400 shrink-0" />
-                            <span>Commit Snapshot ({vm.snapshotAgeHours}h / {vm.snapshotSizeGiB}G)</span>
-                          </span>
-                        ) : vm.toolsStatus === 'Healthy (Running)' ? (
-                          <span className="text-emerald-400 text-[10px]">Healthy (Running)</span>
-                        ) : vm.toolsStatus === 'Linux Open-VM-Tools (Verified)' ? (
-                          <span className="text-teal-300 text-[10px]">Open-VM-Tools (OK)</span>
-                        ) : vm.toolsStatus === 'Outdated (Update Prior to Cutover)' ? (
-                          <span className="text-amber-400 font-bold text-[10px]">Outdated Tools</span>
-                        ) : (
-                          <span className="text-rose-400 font-bold text-[10px]">Missing / Stopped</span>
-                        )}
-                      </td>
-
-                      {/* HCX Path */}
-                      <td className="py-2.5 px-3 font-sans">
-                        <span className="text-[10px] font-bold text-cyan-300 bg-slate-950 px-2 py-0.5 rounded border border-slate-800">
-                          {vm.recommendedMethod}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
           </div>
         )}
 
-        {/* TAB 2: 4-WAVE MIGRATION SEQUENCE PLANNER */}
+        {/* Tab 2: Migration Wave Planner */}
         {activeTab === 'waves' && (
-          <div className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              {waveAnalytics.map(wave => (
-                <div
-                  key={wave.waveIndex}
-                  className="p-5 rounded-xl bg-slate-950 border border-slate-800 space-y-4 shadow-lg flex flex-col justify-between"
-                >
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-mono font-bold text-cyan-400">
-                        Wave {wave.waveIndex}
-                      </span>
-                      <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-900 border border-slate-800 text-slate-300">
-                        {wave.count} In-Scope
-                      </span>
-                    </div>
-                    <h4 className="text-sm font-bold text-white leading-snug">
-                      {wave.title}
-                    </h4>
-                    <div className="text-[11px] text-slate-400 font-mono space-y-1 pt-1">
-                      <div>Storage: <span className="text-white font-bold">{wave.waveStorageTiB} TiB</span></div>
-                      <div>Allocated RAM: <span className="text-white font-bold">{wave.waveRAMGiB} GiB</span></div>
-                    </div>
-                  </div>
+          <MigrationPlanner workloads={ingestedVMs} />
+        )}
 
-                  <div className="space-y-2.5 pt-3 border-t border-slate-800/80 text-xs font-mono">
-                    <div className="flex justify-between text-[11px]">
-                      <span className="text-slate-400">RAV (Live):</span>
-                      <span className="text-teal-400 font-bold">{wave.ravCount} VMs</span>
-                    </div>
-                    <div className="flex justify-between text-[11px]">
-                      <span className="text-slate-400">Bulk Sync:</span>
-                      <span className="text-cyan-400 font-bold">{wave.bulkCount} VMs</span>
-                    </div>
-                    <div className="p-2.5 rounded bg-slate-900 border border-slate-800 space-y-1">
-                      <div className="flex items-center justify-between text-[10px] text-slate-400">
-                        <span>Delta Sync Time:</span>
-                        <span className="text-cyan-300 font-bold">~{wave.durationHours} hrs</span>
+        {/* Tab 3: Advanced Migration Readiness & Blockers Dashboard */}
+        {activeTab === 'blockers' && (
+          <div className="space-y-6">
+            <div className="bg-slate-950 p-5 rounded-xl border border-slate-800 space-y-2">
+              <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                <ShieldAlert className="w-4 h-4 text-rose-400" />
+                <span>Deep Technical Readiness & Migration Blockers Scanner</span>
+              </h3>
+              <p className="text-xs text-slate-400">
+                Automated inspection of RVTools inventory against hyperscaler migration constraints (HCX, vSphere 7.0/8.0). Categorizes critical blockers, hardware obsolescence, and emulated driver bottlenecks.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {/* Card 1: Raw Device Mappings */}
+              <div className="p-4 rounded-xl bg-slate-900 border border-slate-800 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-white">Raw Device Mappings (RDMs)</span>
+                  <span className={`text-[10px] px-2 py-0.5 rounded font-mono font-bold ${rdmPhysicalVMs.length > 0 ? 'bg-rose-950 text-rose-300 border border-rose-700' : 'bg-emerald-950 text-emerald-300'}`}>
+                    {rdmPhysicalVMs.length} Physical · {ingestedVMs.filter(v => v.hasRdmVirtual).length} Virtual
+                  </span>
+                </div>
+                <p className="text-xs text-slate-400">
+                  RDM-P (Physical Mode) maps raw SCSI commands directly to storage LUNs and cannot be replicated live via HCX RAV. RDM-V (Virtual Mode) can be converted to VMDK during HCX Bulk Migration.
+                </p>
+                {rdmPhysicalVMs.length > 0 ? (
+                  <div className="space-y-1.5 pt-2 border-t border-slate-800 text-xs font-mono">
+                    <span className="text-[11px] text-rose-400 font-bold block">Affected Workloads:</span>
+                    {rdmPhysicalVMs.map(vm => (
+                      <div key={vm.vmName} className="p-2 rounded bg-slate-950 border border-rose-900/40 text-slate-300 flex justify-between">
+                        <span>{vm.vmName}</span>
+                        <span className="text-rose-400">RDM-P</span>
                       </div>
-                      <div className="text-[10px] text-slate-500 font-sans">
-                        Window: <span className="text-slate-300">{wave.cutoverWindow}</span>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-xs text-emerald-400 font-mono">No Physical RDMs detected in inventory.</div>
+                )}
+              </div>
+
+              {/* Card 2: Shared Disks & Multi-Writer */}
+              <div className="p-4 rounded-xl bg-slate-900 border border-slate-800 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-white">Multi-Writer & Shared SCSI</span>
+                  <span className={`text-[10px] px-2 py-0.5 rounded font-mono font-bold ${sharedScsiVMs.length > 0 ? 'bg-rose-950 text-rose-300 border border-rose-700' : 'bg-emerald-950 text-emerald-300'}`}>
+                    {sharedScsiVMs.length} Cluster Nodes
+                  </span>
+                </div>
+                <p className="text-xs text-slate-400">
+                  Workloads with disk.enableConcurrentAccess="true" (Oracle RAC, SQL Server Failover Cluster Instances). Concurrent access must be sequenced in a dedicated cluster wave.
+                </p>
+                {sharedScsiVMs.length > 0 ? (
+                  <div className="space-y-1.5 pt-2 border-t border-slate-800 text-xs font-mono">
+                    <span className="text-[11px] text-rose-400 font-bold block">Clustered VMs:</span>
+                    {sharedScsiVMs.map(vm => (
+                      <div key={vm.vmName} className="p-2 rounded bg-slate-950 border border-rose-900/40 text-slate-300 flex justify-between">
+                        <span>{vm.vmName}</span>
+                        <span className="text-amber-400">Shared SCSI</span>
                       </div>
-                    </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-xs text-emerald-400 font-mono">No shared multi-writer disks detected.</div>
+                )}
+              </div>
+
+              {/* Card 3: Virtual Hardware Version */}
+              <div className="p-4 rounded-xl bg-slate-900 border border-slate-800 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-white">Virtual Hardware Versions</span>
+                  <span className={`text-[10px] px-2 py-0.5 rounded font-mono font-bold ${obsoleteHwVMs.length > 0 ? 'bg-rose-950 text-rose-300 border border-rose-700' : 'bg-emerald-950 text-emerald-300'}`}>
+                    {obsoleteHwVMs.length} Obsolete (&lt;HW11)
+                  </span>
+                </div>
+                <p className="text-xs text-slate-400">
+                  Target cloud platforms (AVS, AWS VMC, GCVE) run on ESXi 7.0/8.0 (HW 19/20). Workloads running below HW 11 fail power-on checks in cloud SDDC.
+                </p>
+                <div className="space-y-1.5 pt-2 border-t border-slate-800 text-xs font-mono text-slate-300">
+                  <div className="flex justify-between">
+                    <span>Target Baseline:</span>
+                    <span className="text-cyan-300 font-bold">ESXi 7.0/8.0 (HW 19/20)</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Aging HW (11-14):</span>
+                    <span className="text-amber-300">{ingestedVMs.filter(v => v.hardwareVersionNumber >= 11 && v.hardwareVersionNumber < 15).length} VMs</span>
                   </div>
                 </div>
-              ))}
+              </div>
+
+              {/* Card 4: Legacy Network Adapters */}
+              <div className="p-4 rounded-xl bg-slate-900 border border-slate-800 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-white">Network Adapters (vNICs)</span>
+                  <span className={`text-[10px] px-2 py-0.5 rounded font-mono font-bold ${legacyVnicVMs.length > 0 ? 'bg-amber-950 text-amber-300 border border-amber-700' : 'bg-emerald-950 text-emerald-300'}`}>
+                    {legacyVnicVMs.length} Legacy E1000/E
+                  </span>
+                </div>
+                <p className="text-xs text-slate-400">
+                  Emulated Intel E1000/E1000E drivers generate CPU interrupt bottlenecks and are capped at 1 Gbps. Convert to VMXNET3 prior to cutover for 25/100 Gbps cloud line-rate.
+                </p>
+                <div className="text-xs font-mono text-slate-300 pt-2 border-t border-slate-800 flex justify-between">
+                  <span>Paravirtual VMXNET3:</span>
+                  <span className="text-emerald-400 font-bold">{ingestedVMs.filter(v => !v.hasLegacyVnic).length} VMs</span>
+                </div>
+              </div>
+
+              {/* Card 5: Storage Controllers */}
+              <div className="p-4 rounded-xl bg-slate-900 border border-slate-800 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-white">Storage Controllers</span>
+                  <span className={`text-[10px] px-2 py-0.5 rounded font-mono font-bold ${legacyControllerVMs.length > 0 ? 'bg-amber-950 text-amber-300 border border-amber-700' : 'bg-emerald-950 text-emerald-300'}`}>
+                    {legacyControllerVMs.length} Legacy SCSI
+                  </span>
+                </div>
+                <p className="text-xs text-slate-400">
+                  Legacy LSI Logic Parallel or BusLogic controllers should be upgraded to VMware Paravirtual SCSI (PVSCSI) to minimize host CPU consumption during I/O bursts.
+                </p>
+                <div className="text-xs font-mono text-slate-300 pt-2 border-t border-slate-800 flex justify-between">
+                  <span>PVSCSI Optimized:</span>
+                  <span className="text-cyan-400 font-bold">{ingestedVMs.filter(v => !v.hasLegacyController).length} VMs</span>
+                </div>
+              </div>
+
+              {/* Card 6: VMware Tools & Snapshots */}
+              <div className="p-4 rounded-xl bg-slate-900 border border-slate-800 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-white">Tools & Snapshot Health</span>
+                  <span className={`text-[10px] px-2 py-0.5 rounded font-mono font-bold ${criticalSnapshotsVMs.length > 0 ? 'bg-rose-950 text-rose-300 border border-rose-700' : 'bg-emerald-950 text-emerald-300'}`}>
+                    {criticalSnapshotsVMs.length} Stale Snapshots
+                  </span>
+                </div>
+                <p className="text-xs text-slate-400">
+                  VMware Tools must be active for HCX guest quiescing. Active snapshots older than 24 hours trigger disk stun during delta synchronization.
+                </p>
+                <div className="text-xs font-mono text-slate-300 pt-2 border-t border-slate-800 flex justify-between">
+                  <span>Outdated Tools:</span>
+                  <span className="text-amber-400 font-bold">{outdatedToolsVMs.length} VMs</span>
+                </div>
+              </div>
             </div>
           </div>
         )}
 
-        {/* TAB 3: STRETCHED L2 DECISION MATRIX & HCX NE FLEET */}
-        {activeTab === 'vlans' && (
+        {/* Tab 4: Storage Policy & Capacity Sizing */}
+        {activeTab === 'storage' && (
           <div className="space-y-6">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-xl bg-slate-950 border border-cyan-500/30">
-              <div>
-                <div className="text-xs font-mono font-bold text-cyan-400 uppercase">
-                  HCX Network Extension (NE) Fleet Sizing
-                </div>
-                <div className="text-sm text-slate-300 mt-0.5">
-                  Extending <strong className="text-white">{extendedVlanCount} VLANs</strong> requires{' '}
-                  <strong className="text-cyan-300">{hcxNePairsRequired} Active/Standby HCX NE Appliance Pair(s)</strong> (Rule: 1 NE pair per 8 extended VLANs).
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+              {/* Left Controls (6 Cols) */}
+              <div className="lg:col-span-6 space-y-4">
+                <div className="p-5 rounded-xl bg-slate-950 border border-slate-800 space-y-4">
+                  <div className="text-xs font-bold text-white uppercase font-mono flex items-center justify-between">
+                    <span>Enterprise Storage Policy Selector</span>
+                    <span className="text-cyan-400">{selectedPolicy.shortLabel}</span>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-xs text-slate-300">Target RAID / FTT Policy</label>
+                    <select
+                      value={storagePolicyId}
+                      onChange={e => setStoragePolicyId(e.target.value as StoragePolicyId)}
+                      className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-xs font-mono text-white cursor-pointer"
+                    >
+                      <option value="raid1_ftt1">RAID 1, FTT 1 (2.0x raw capacity factor - Mirroring)</option>
+                      <option value="raid5_ftt1">RAID 5, FTT 1 (~1.33x efficiency factor - 3+1 Erasure Coding)</option>
+                      <option value="raid6_ftt2">RAID 6, FTT 2 (~1.50x dual parity factor - 4+2 Erasure Coding)</option>
+                    </select>
+                    <p className="text-xs text-slate-400 leading-relaxed">
+                      {selectedPolicy.description} Minimum {selectedPolicy.minHosts} bare-metal hosts required in target cluster.
+                    </p>
+                  </div>
+
+                  <div className="space-y-2 pt-2 border-t border-slate-800">
+                    <div className="flex justify-between text-xs">
+                      <span className="text-slate-300">vSAN Operational Slack Factor</span>
+                      <span className="text-cyan-400 font-mono font-bold">{slackFactorPercent}%</span>
+                    </div>
+                    <select
+                      value={slackFactorPercent}
+                      onChange={e => setSlackFactorPercent(Number(e.target.value))}
+                      className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-xs font-mono text-white cursor-pointer"
+                    >
+                      <option value={20}>20% Slack (VMware Minimum Safety Baseline)</option>
+                      <option value={25}>25% Slack (Enterprise Recommended Standard)</option>
+                      <option value={30}>30% Slack (High Resync & Snapshot Growth)</option>
+                    </select>
+                  </div>
+
+                  {/* Storage Allocation Split */}
+                  <div className="space-y-3 pt-2 border-t border-slate-800">
+                    <div className="flex justify-between text-xs font-mono">
+                      <span className="text-cyan-300 font-bold">Cluster vSAN: {vsanPercentage}% ({storageAnalysis.vsanUsedDataTB} TiB)</span>
+                      <span className="text-emerald-300 font-bold">External NFS: {100 - vsanPercentage}% ({storageAnalysis.externalUsedStorageTB} TiB)</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="10"
+                      max="90"
+                      step="5"
+                      value={vsanPercentage}
+                      onChange={e => setVsanPercentage(Number(e.target.value))}
+                      className="w-full accent-cyan-400 bg-slate-800 h-2 rounded cursor-pointer"
+                    />
+                    <div className="flex justify-between text-[10px] text-slate-500 font-mono">
+                      <span>10% vSAN (Maximum NFS Offload)</span>
+                      <span>50% Balanced</span>
+                      <span>90% vSAN Heavy</span>
+                    </div>
+                  </div>
                 </div>
               </div>
-              <div className="px-3 py-1.5 rounded-lg bg-cyan-950 border border-cyan-400/50 text-cyan-300 font-mono text-xs font-bold text-center">
-                {hcxNePairsRequired} Appliance Pair{hcxNePairsRequired > 1 ? 's' : ''} Needed
+
+              {/* Right Output Capacity Cards (6 Cols) */}
+              <div className="lg:col-span-6 space-y-4">
+                <div className="p-5 rounded-xl bg-slate-950 border border-cyan-500/30 space-y-4">
+                  <div className="text-xs font-bold text-white uppercase font-mono flex items-center justify-between">
+                    <span>True Usable Capacity & Parity Breakdown</span>
+                    <span className="text-emerald-400 font-mono font-bold">N+1 Resilient</span>
+                  </div>
+
+                  <div className="space-y-3 text-xs font-mono">
+                    <div className="flex justify-between text-slate-400">
+                      <span>In-Scope Active Workload Data:</span>
+                      <span className="text-white font-bold">{storageAnalysis.totalUsedStorageTB} TiB</span>
+                    </div>
+                    <div className="flex justify-between text-slate-400">
+                      <span>vSAN Active Data Share ({storageAnalysis.vsanPercentage}%):</span>
+                      <span className="text-cyan-300 font-bold">{storageAnalysis.vsanUsedDataTB} TiB</span>
+                    </div>
+                    <div className="flex justify-between text-slate-400">
+                      <span>vSAN Policy Parity Overhead ({selectedPolicy.shortLabel}):</span>
+                      <span className="text-amber-400 font-bold">+{storageAnalysis.vsanPolicyOverheadTB} TiB</span>
+                    </div>
+                    <div className="flex justify-between text-slate-400">
+                      <span>vSAN Operational Slack Reserve ({slackFactorPercent}%):</span>
+                      <span className="text-indigo-400 font-bold">+{storageAnalysis.vsanSlackTB} TiB</span>
+                    </div>
+                    <div className="flex justify-between text-slate-300 pt-2 border-t border-slate-800">
+                      <span className="font-bold">Raw vSAN Node Storage Required:</span>
+                      <span className="text-cyan-400 font-black text-sm">{storageAnalysis.vsanRawRequiredTB} TiB</span>
+                    </div>
+                    <div className="flex justify-between text-slate-300">
+                      <span className="font-bold">External SAN Provisioned ({selectedSku.externalStorageName}):</span>
+                      <span className="text-emerald-400 font-black text-sm">{storageAnalysis.externalProvisionedTB} TiB</span>
+                    </div>
+                  </div>
+
+                  <div className="p-3 rounded-lg bg-slate-900 border border-slate-800 text-xs font-mono">
+                    <div className="text-slate-400">Required Storage Hosts for vSAN ({selectedSku.name}):</div>
+                    <div className="text-xl font-bold text-white mt-1">
+                      {storageAnalysis.vsanStorageNodesRequired} <span className="text-xs text-slate-400">Hosts</span>
+                    </div>
+                    <div className="text-[10px] text-slate-500 mt-0.5">
+                      Provides {storageAnalysis.vsanUsablePerNodeTB} TiB net usable capacity per node under {selectedPolicy.shortLabel}.
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Tab 5: Stretched L2 VLAN Decision Matrix */}
+        {activeTab === 'vlans' && (
+          <div className="space-y-4">
+            <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <div className="text-xs font-bold text-white flex items-center gap-2">
+                  <Wifi className="w-4 h-4 text-cyan-400" />
+                  <span>Stretched Layer-2 Network Extensions (HCX Network Extension)</span>
+                </div>
+                <div className="text-xs text-slate-400 mt-0.5">
+                  Extending VLANs eliminates VM IP address changes and routing cutover delays during migration.
+                </div>
+              </div>
+              <div className="text-xs font-mono text-cyan-300 bg-slate-900 px-3 py-1.5 rounded-lg border border-slate-800">
+                HCX-NE Appliance Fleet: <span className="font-bold text-white">{hcxNePairsRequired} Pair(s)</span> (1 pair per 8 extended VLANs)
               </div>
             </div>
 
-            <div className="overflow-x-auto border border-slate-800 rounded-lg">
+            <div className="overflow-x-auto rounded-xl border border-slate-800">
               <table className="w-full text-left text-xs font-mono">
-                <thead className="bg-slate-950 text-slate-400 uppercase text-[10px] border-b border-slate-800">
+                <thead className="bg-slate-950 text-slate-400 border-b border-slate-800 text-[11px]">
                   <tr>
-                    <th className="py-2.5 px-3">Port Group Name</th>
-                    <th className="py-2.5 px-3">VLAN ID</th>
+                    <th className="py-2.5 px-3">Port Group / VLAN</th>
                     <th className="py-2.5 px-3">Connected VMs</th>
-                    <th className="py-2.5 px-3">In-Scope Storage (TiB)</th>
-                    <th className="py-2.5 px-3">Extend Network via HCX NE?</th>
+                    <th className="py-2.5 px-3">Aggregated Storage</th>
+                    <th className="py-2.5 px-3">HCX Extension</th>
+                    <th className="py-2.5 px-3">Status</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-800/60 text-slate-300 text-[11px]">
-                  {vlanSummary.map((vlan, idx) => (
-                    <tr key={idx} className="hover:bg-slate-800/40 transition-colors">
-                      <td className="py-2.5 px-3 font-bold text-white">{vlan.portGroup}</td>
-                      <td className="py-2.5 px-3 text-cyan-300">VLAN {vlan.vlanId}</td>
-                      <td className="py-2.5 px-3">{vlan.count} VMs</td>
-                      <td className="py-2.5 px-3">{vlan.storageTiB} TiB</td>
-                      <td className="py-2.5 px-3 font-sans">
+                <tbody className="divide-y divide-slate-800/60 bg-slate-900/40">
+                  {vlanSummary.map(v => (
+                    <tr key={v.vlanId} className="hover:bg-slate-800/40">
+                      <td className="py-2.5 px-3 font-semibold text-white">
+                        {v.portGroup} (VLAN {v.vlanId})
+                      </td>
+                      <td className="py-2.5 px-3 text-slate-300">{v.count} VMs</td>
+                      <td className="py-2.5 px-3 text-cyan-300">{v.storageTiB} TiB</td>
+                      <td className="py-2.5 px-3">
                         <button
-                          onClick={() => handleToggleVlanExtension(vlan.vlanId)}
-                          className={`px-3 py-1 rounded-md text-[10px] font-bold border transition-colors cursor-pointer ${
-                            vlan.isExtended
-                              ? 'bg-emerald-950 text-emerald-300 border-emerald-500/50'
-                              : 'bg-slate-800 text-slate-400 border-slate-700'
+                          onClick={() => setExtendedVlanState(prev => ({ ...prev, [v.vlanId]: !v.isExtended }))}
+                          className={`px-2 py-0.5 rounded text-[10px] font-bold cursor-pointer border ${
+                            v.isExtended
+                              ? 'bg-emerald-950 text-emerald-300 border-emerald-700'
+                              : 'bg-slate-950 text-slate-400 border-slate-800'
                           }`}
                         >
-                          {vlan.isExtended ? 'Yes (HCX NE Extended)' : 'No (Routed Subnet)'}
+                          {v.isExtended ? 'Extended (Stretched L2)' : 'Isolated (No Extension)'}
                         </button>
+                      </td>
+                      <td className="py-2.5 px-3 text-slate-400 text-[11px]">
+                        {v.isExtended ? 'Zero IP Mutation' : 'Re-IP in Cloud Tier-1'}
                       </td>
                     </tr>
                   ))}
@@ -1486,38 +1589,14 @@ export const RVToolsAnalyzerPage: React.FC = () => {
         )}
       </div>
 
-      {/* Google Drive Workspace Banner */}
-      <div className="p-4 rounded-xl bg-slate-900 border border-cyan-500/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div className="flex items-start gap-3">
-          <div className="p-2.5 rounded-lg bg-cyan-950 text-cyan-400 border border-cyan-500/40 shrink-0">
-            <FolderGit2 className="w-5 h-5" />
-          </div>
-          <div>
-            <div className="text-xs font-bold text-white">Google Drive Shared Workspace</div>
-            <div className="text-[11px] text-slate-400 mt-0.5">
-              Sync generated multi-tab Excel files and executive readiness dossiers to folder <span className="font-mono text-cyan-300 select-all">{GOOGLE_DRIVE_CONFIG.folderId}</span>.
-            </div>
-          </div>
-        </div>
-        <a
-          href={GOOGLE_DRIVE_CONFIG.folderUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 border border-cyan-500/40 text-cyan-300 text-xs font-semibold shrink-0"
-        >
-          <span>Open Drive Folder</span>
-          <ExternalLink className="w-3.5 h-3.5" />
-        </a>
-      </div>
-
-      {/* Print-Ready Executive Dossier Modal */}
+      {/* Print Dossier Modal (Zero Costing) */}
       {showPrintModal && (
         <div className="fixed inset-0 z-50 bg-slate-950/90 backdrop-blur-md p-4 sm:p-8 overflow-y-auto flex justify-center">
           <div className="bg-slate-900 border border-slate-700 rounded-2xl max-w-4xl w-full p-8 space-y-6 text-slate-200 shadow-2xl relative my-auto">
             <div className="flex items-center justify-between border-b border-slate-800 pb-4">
               <div>
-                <span className="text-xs font-mono text-cyan-400 uppercase font-semibold">Executive Cloud Migration Dossier</span>
-                <h2 className="text-xl font-bold text-white">RVTools Assessment & Wave Readiness Report</h2>
+                <span className="text-xs font-mono text-cyan-400 uppercase font-semibold">Executive Architecture Dossier</span>
+                <h2 className="text-xl font-bold text-white">RVTools Technical Assessment & Wave Schedule</h2>
               </div>
               <div className="flex items-center gap-2">
                 <button
@@ -1538,8 +1617,8 @@ export const RVToolsAnalyzerPage: React.FC = () => {
 
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs font-mono bg-slate-950 p-4 rounded-xl border border-slate-800">
               <div>In-Scope VMs: <span className="font-bold text-white">{inScopeVMs.length}</span></div>
-              <div>In-Scope vCPUs: <span className="font-bold text-cyan-300">{inScopeVCPUs}</span></div>
-              <div>Provisioned Storage: <span className="font-bold text-cyan-300">{inScopeStorageTiB} TiB</span></div>
+              <div>Effective Cores: <span className="font-bold text-cyan-300">{sizingEngine.effectiveCores}</span></div>
+              <div>Buffered RAM: <span className="font-bold text-indigo-300">{sizingEngine.ramWithBuffer} GiB</span></div>
               <div>Readiness Score: <span className="font-bold text-emerald-400">{readinessScore}%</span></div>
             </div>
 
@@ -1554,37 +1633,21 @@ export const RVToolsAnalyzerPage: React.FC = () => {
                   <div className="text-[10px] text-cyan-300 mt-1">N+1 Resilient</div>
                 </div>
                 <div className="p-3 rounded-lg bg-slate-950 border border-slate-800">
-                  <div className="text-slate-400">External Storage</div>
-                  <div className="text-lg font-bold text-white">{inScopeDecoupledTiB} TiB</div>
-                  <div className="text-[10px] text-indigo-300 mt-1">{selectedSku.externalStorageName}</div>
+                  <div className="text-slate-400">Storage Policy Applied</div>
+                  <div className="text-sm font-bold text-amber-300 mt-1">{selectedPolicy.shortLabel}</div>
+                  <div className="text-[10px] text-slate-400 mt-1">{slackFactorPercent}% Slack Factor</div>
                 </div>
                 <div className="p-3 rounded-lg bg-slate-950 border border-slate-800">
-                  <div className="text-slate-400">Monthly Run-Rate</div>
-                  <div className="text-lg font-bold text-emerald-400">${sizingEngine.decoupledTotalCost.toLocaleString()}</div>
-                  <div className="text-[10px] text-emerald-300 mt-1">Saves ${sizingEngine.monthlySavings.toLocaleString()}/mo</div>
+                  <div className="text-slate-400">External NFS Offload</div>
+                  <div className="text-lg font-bold text-emerald-400">{storageAnalysis.externalUsedStorageTB} TiB</div>
+                  <div className="text-[10px] text-slate-400 mt-1">{selectedSku.externalStorageName}</div>
                 </div>
-              </div>
-            </div>
-
-            <div className="space-y-3">
-              <h3 className="text-sm font-bold text-white uppercase font-mono tracking-wider">4-Wave Migration Sequencing Summary</h3>
-              <div className="space-y-2 text-xs">
-                {waveAnalytics.map(w => (
-                  <div key={w.waveIndex} className="p-3 rounded-lg bg-slate-950 border border-slate-800 flex justify-between items-center">
-                    <div>
-                      <div className="font-bold text-white">{w.title}</div>
-                      <div className="text-[11px] text-slate-400 font-mono">{w.count} VMs · {w.waveStorageTiB} TiB storage</div>
-                    </div>
-                    <div className="text-right font-mono text-cyan-300 text-xs">
-                      Window: {w.cutoverWindow}
-                    </div>
-                  </div>
-                ))}
               </div>
             </div>
           </div>
         </div>
       )}
+
       {/* Actionable Remediation Checklist Modal */}
       {showRemediationModal && (
         <div className="fixed inset-0 z-50 bg-slate-950/90 backdrop-blur-md p-4 sm:p-8 overflow-y-auto flex justify-center">
@@ -1595,7 +1658,7 @@ export const RVToolsAnalyzerPage: React.FC = () => {
                   <ShieldAlert className="w-3.5 h-3.5" />
                   <span>Pre-Flight Remediation Matrix</span>
                 </span>
-                <h2 className="text-xl font-bold text-white">Pre-Migration Snapshot & Tools Action Checklist</h2>
+                <h2 className="text-xl font-bold text-white">Pre-Migration Snapshot & Driver Action Checklist</h2>
               </div>
               <button
                 onClick={() => setShowRemediationModal(false)}
@@ -1605,27 +1668,20 @@ export const RVToolsAnalyzerPage: React.FC = () => {
               </button>
             </div>
 
-            {/* Step-by-step procedure sections */}
             <div className="space-y-4 text-xs">
               <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-3">
                 <div className="flex items-center justify-between">
                   <h4 className="font-bold text-white flex items-center gap-2">
                     <span className="w-5 h-5 rounded-full bg-rose-950 border border-rose-500/50 text-rose-300 flex items-center justify-center text-[10px] font-mono">1</span>
-                    <span>Snapshot Consolidation & Stun Prevention Protocol</span>
+                    <span>Snapshot Consolidation Protocol</span>
                   </h4>
-                  <span className="text-[10px] font-mono text-rose-400 font-bold">{criticalSnapshots.length} VMs Flagged</span>
+                  <span className="text-[10px] font-mono text-rose-400 font-bold">{criticalSnapshotsVMs.length} VMs Flagged</span>
                 </div>
-                <p className="text-slate-400 leading-relaxed text-[11px]">
-                  VMware HCX requires clean base VMDK disks to initiate delta synchronization. Active snapshots exceeding 24 hours or 20 GiB cause VM stun, delta commit timeouts, and parent disk descriptor lock contention.
-                </p>
-
                 <div className="space-y-2 pt-1">
                   {[
-                    { id: 'snap-1', text: 'Pause or reschedule third-party backup jobs (Veeam/Cohesity/Commvault) during the consolidation window.' },
-                    { id: 'snap-2', text: 'Temporarily set DRS Automation to Manual or Partially Automated to prevent vMotion during snapshot delete.' },
-                    { id: 'snap-3', text: 'In vCenter: Right-click VM > Snapshots > Manage Snapshots > Click "Delete All" (or run PowerCLI: Get-VM [VM-Name] | Get-Snapshot | Remove-Snapshot -Confirm:$false).' },
-                    { id: 'snap-4', text: 'Inspect VM Summary in vSphere Client and verify "Needs Consolidation: No". Monitor ESXi vpxa.log for asynchronous helper commit status.' },
-                    { id: 'snap-5', text: 'Perform HCX Site Pairing pre-flight check to confirm source datastore delta chain is fully consolidated.' }
+                    { id: 'snap-1', text: 'Delete or commit stale snapshots exceeding 24 hours prior to initiating HCX replication.' },
+                    { id: 'snap-2', text: 'Verify "Needs Consolidation" flag in vCenter is cleared on all source ESXi hosts.' },
+                    { id: 'snap-3', text: 'Confirm source datastore delta chains are clean to prevent VM stun during live migration cutovers.' }
                   ].map(step => (
                     <label key={step.id} className="flex items-start gap-2.5 p-2 rounded-lg bg-slate-900 border border-slate-800/80 cursor-pointer hover:bg-slate-800/40">
                       <input
@@ -1646,19 +1702,15 @@ export const RVToolsAnalyzerPage: React.FC = () => {
                 <div className="flex items-center justify-between">
                   <h4 className="font-bold text-white flex items-center gap-2">
                     <span className="w-5 h-5 rounded-full bg-amber-950 border border-amber-500/50 text-amber-300 flex items-center justify-center text-[10px] font-mono">2</span>
-                    <span>VMware Tools & Guest OS Customization Protocol</span>
+                    <span>Hardware & Driver Modernization</span>
                   </h4>
-                  <span className="text-[10px] font-mono text-amber-400 font-bold">{outdatedTools.length} VMs Flagged</span>
+                  <span className="text-[10px] font-mono text-amber-400 font-bold">{legacyVnicVMs.length + legacyControllerVMs.length} Adapters/Controllers</span>
                 </div>
-                <p className="text-slate-400 leading-relaxed text-[11px]">
-                  HCX Guest Customization and non-disruptive IP re-addressing rely on running VMware Tools daemons. Missing or outdated tools result in network interface failure upon target SDDC boot.
-                </p>
-
                 <div className="space-y-2 pt-1">
                   {[
-                    { id: 'tools-1', text: 'For Windows Servers: Deploy VMware Tools via SCCM or silent installer (setup64.exe /s /v"/qn REBOOT=R") and verify VMware Tools service is automatic.' },
-                    { id: 'tools-2', text: 'For RHEL / CentOS / Ubuntu Linux: Ensure distro-native open-vm-tools package is installed and active (sudo systemctl enable --now vmtoolsd).' },
-                    { id: 'tools-3', text: 'Confirm VSS guest quiescing support is enabled for SQL, Oracle, and Active Directory VMs.' }
+                    { id: 'drv-1', text: 'Convert legacy emulated E1000/E1000E network adapters to VMXNET3 to enable cloud line-rate throughput.' },
+                    { id: 'drv-2', text: 'Update legacy LSI Logic Parallel controllers to VMware Paravirtual SCSI (PVSCSI).' },
+                    { id: 'drv-3', text: 'Upgrade virtual hardware version to baseline vHardware 15+ during scheduled maintenance cutover reboot.' }
                   ].map(step => (
                     <label key={step.id} className="flex items-start gap-2.5 p-2 rounded-lg bg-slate-900 border border-slate-800/80 cursor-pointer hover:bg-slate-800/40">
                       <input
@@ -1674,51 +1726,10 @@ export const RVToolsAnalyzerPage: React.FC = () => {
                   ))}
                 </div>
               </div>
-
-              {/* Table of affected VMs */}
-              {criticalSnapshots.length > 0 && (
-                <div className="space-y-2">
-                  <h4 className="text-xs font-bold text-white uppercase font-mono">High-Priority Affected Virtual Machines ({criticalSnapshots.length})</h4>
-                  <div className="max-h-48 overflow-y-auto border border-slate-800 rounded-lg">
-                    <table className="w-full text-left text-[11px] font-mono">
-                      <thead className="bg-slate-950 text-slate-400 text-[10px] uppercase border-b border-slate-800">
-                        <tr>
-                          <th className="p-2">VM Name</th>
-                          <th className="p-2">Age (Hours)</th>
-                          <th className="p-2">Snapshot Size</th>
-                          <th className="p-2">Port Group</th>
-                          <th className="p-2">Recommended Action</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-800/60 text-slate-300">
-                        {criticalSnapshots.map((vm, idx) => (
-                          <tr key={idx} className="hover:bg-slate-800/30">
-                            <td className="p-2 font-bold text-white">{vm.vmName}</td>
-                            <td className="p-2 text-rose-400 font-bold">{vm.snapshotAgeHours}h ({Math.round(vm.snapshotAgeHours/24)} days)</td>
-                            <td className="p-2 text-cyan-300">{vm.snapshotSizeGiB} GiB</td>
-                            <td className="p-2 text-slate-400">{vm.portGroup}</td>
-                            <td className="p-2 text-emerald-400 font-sans text-[10px]">Consolidate before Wave {vm.assignedWave}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            <div className="flex justify-end pt-2 border-t border-slate-800">
-              <button
-                onClick={() => setShowRemediationModal(false)}
-                className="px-4 py-2 rounded-lg bg-cyan-400 hover:bg-cyan-300 text-slate-950 font-bold text-xs cursor-pointer"
-              >
-                Done / Close Checklist
-              </button>
             </div>
           </div>
         </div>
       )}
-    </div>
     </div>
   );
 };

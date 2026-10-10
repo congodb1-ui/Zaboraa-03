@@ -136,26 +136,18 @@ export const DRPlannerPage: React.FC = () => {
       : 0;
     const journalOverheadTB = Math.round((journalOverheadGB / 1024) * 10) / 10;
 
-    // Sizing & Cost Modeling
+    // Standby Sizing & Host Footprint Modeling (Zero Costing)
     const fullSddcNodes = Math.max(3, Math.ceil(protectedVMs / 50));
     let standbyNodes = fullSddcNodes;
-    let monthlyNodeCost = fullSddcNodes * 5500; // $5500/node/month average
-    let monthlyStorageCost = protectedStorageTB * 180; // $180/TB
 
     if (deploymentStrategy === 'pilotLight') {
       standbyNodes = 3; // Minimum viable core cluster
-      monthlyNodeCost = 3 * 5500;
     } else if (deploymentStrategy === 'coldStorage') {
-      standbyNodes = 0;
-      monthlyNodeCost = 0;
-      // Replaced with object storage rates: ~$0.022 per GB/month (~$22.5/TB)
-      monthlyStorageCost = protectedStorageTB * 22.5;
+      standbyNodes = 0; // On-demand dynamically spun up
     }
 
-    const hotStandbyTotalMonthly = fullSddcNodes * 5500 + protectedStorageTB * 180;
-    const currentStrategyTotalMonthly = monthlyNodeCost + monthlyStorageCost;
-    const monthlySavings = Math.max(0, hotStandbyTotalMonthly - currentStrategyTotalMonthly);
-    const annualSavings = monthlySavings * 12;
+    const hostReductionNodes = Math.max(0, fullSddcNodes - standbyNodes);
+    const hostReductionPercent = Math.round((hostReductionNodes / fullSddcNodes) * 100);
 
     // Initial Full Seeding Time
     const compressedTotalMb = totalStorageGB * (1 - engine.compressionEfficiency / 100) * 8 * 1024;
@@ -182,12 +174,8 @@ export const DRPlannerPage: React.FC = () => {
       journalOverheadTB,
       fullSddcNodes,
       standbyNodes,
-      monthlyNodeCost,
-      monthlyStorageCost,
-      hotStandbyTotalMonthly,
-      currentStrategyTotalMonthly,
-      monthlySavings,
-      annualSavings,
+      hostReductionNodes,
+      hostReductionPercent,
       initialSeedHours,
       initialSeedDays,
       totalEstimatedRtoMin,
@@ -227,8 +215,8 @@ export const DRPlannerPage: React.FC = () => {
       { Metric: 'Bandwidth Verdict', Value: calculations.isBandwidthAdequate ? 'PASS' : 'WARNING' },
       { Metric: 'Estimated Failover RTO', Value: `${calculations.totalEstimatedRtoMin} Minutes` },
       { Metric: 'Failover Network Strategy', Value: failoverNetwork === 'stretchedL2' ? 'NSX-T Stretched L2' : 'Routed Tier-1' },
-      { Metric: 'Estimated Monthly Run-Rate Savings', Value: `$${calculations.monthlySavings.toLocaleString()}` },
-      { Metric: 'Projected Annual TCO Savings', Value: `$${calculations.annualSavings.toLocaleString()}` }
+      { Metric: 'Standby Host Reduction', Value: `${calculations.hostReductionNodes} Hosts (${calculations.hostReductionPercent}%)` },
+      { Metric: 'CDP Journal Storage (TB)', Value: `${calculations.journalOverheadTB} TB` }
     ];
 
     XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(summaryRows), 'DR Assessment Summary');
@@ -262,15 +250,15 @@ export const DRPlannerPage: React.FC = () => {
         <div className="flex items-center gap-2 text-xs font-mono text-slate-400">
           <Link to="/tools" className="hover:text-cyan-400 transition-colors">Engineering Workbench</Link>
           <span>/</span>
-          <span className="text-cyan-300">Multi-Engine DR RPO/RTO & Cost Calculator</span>
+          <span className="text-cyan-300">Multi-Engine DR RPO/RTO & Resiliency Planner</span>
         </div>
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-white">
-              Disaster Recovery Multi-Engine & TCO Calculator
+              Disaster Recovery Multi-Engine & Technical RPO/RTO Planner
             </h1>
             <p className="text-sm text-slate-300 mt-1 max-w-3xl">
-              Model and compare VMware SRM, HPE Zerto CDP, JetStream DR, and Veeam. Compare Hot Standby vs. Pilot Light vs. Cold Object Storage idle costs, calculate CDP journal retention overhead, and evaluate NSX-T failover networking RTO impact.
+              Model and compare VMware SRM, HPE Zerto CDP, JetStream DR, and Veeam. Compare Hot Standby vs. Pilot Light vs. Cold Object Storage host footprints, calculate CDP journal retention overhead, and evaluate NSX-T failover networking RTO impact.
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -550,33 +538,38 @@ export const DRPlannerPage: React.FC = () => {
               </div>
             </div>
 
-            {/* Idle Run-Rate Cost Savings Card */}
-            <div className="p-4 rounded-xl bg-emerald-950/30 border border-emerald-500/40 space-y-3">
+            {/* Standby Host Footprint & Resiliency Card */}
+            <div className="p-4 rounded-xl bg-slate-900 border border-cyan-500/30 space-y-3">
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-400">
+                <div className="flex items-center gap-1.5 text-xs font-bold text-cyan-400">
                   <Zap className="w-4 h-4" />
-                  <span>Standby TCO Cost Optimization</span>
+                  <span>Standby Host Density & Capacity Modeling</span>
                 </div>
                 <span className="text-[10px] font-mono text-emerald-300">
-                  {deploymentStrategy === 'coldStorage' ? '-80% Run-Rate' : deploymentStrategy === 'pilotLight' ? '-55% Run-Rate' : 'Standard'}
+                  {deploymentStrategy === 'coldStorage' ? 'On-Demand Dynamic' : deploymentStrategy === 'pilotLight' ? 'Pilot Light Core' : 'Hot Standby'}
                 </span>
               </div>
               <div className="grid grid-cols-2 gap-2 text-center text-xs">
-                <div className="p-2.5 rounded bg-slate-950 border border-emerald-500/20">
-                  <div className="text-[10px] text-slate-400">Monthly Run-Rate Savings</div>
-                  <div className="text-lg font-bold text-emerald-300 font-mono">
-                    ${calculations.monthlySavings.toLocaleString()}
+                <div className="p-2.5 rounded bg-slate-950 border border-slate-800">
+                  <div className="text-[10px] text-slate-400">Standby Hosts Provisioned</div>
+                  <div className="text-lg font-bold text-white font-mono">
+                    {calculations.standbyNodes} <span className="text-xs text-slate-400">Hosts</span>
                   </div>
                 </div>
-                <div className="p-2.5 rounded bg-slate-950 border border-emerald-500/20">
-                  <div className="text-[10px] text-slate-400">Projected Annual Savings</div>
+                <div className="p-2.5 rounded bg-slate-950 border border-slate-800">
+                  <div className="text-[10px] text-slate-400">Host Footprint Reduction</div>
                   <div className="text-lg font-bold text-emerald-300 font-mono">
-                    ${calculations.annualSavings.toLocaleString()}
+                    -{calculations.hostReductionNodes} ({calculations.hostReductionPercent}%)
                   </div>
                 </div>
               </div>
-              <div className="text-[11px] text-slate-400">
-                Active standby compute: <span className="font-bold text-white">{calculations.standbyNodes} SDDC nodes</span> (vs {calculations.fullSddcNodes} in full hot standby).
+              <div className="text-[11px] text-slate-400 font-mono flex justify-between">
+                <span>Full Cluster Equivalent:</span>
+                <span className="font-bold text-slate-300">{calculations.fullSddcNodes} Hosts</span>
+              </div>
+              <div className="text-[11px] text-slate-400 font-mono flex justify-between">
+                <span>CDP Journal Footprint:</span>
+                <span className="font-bold text-cyan-300">{calculations.journalOverheadTB} TB</span>
               </div>
             </div>
 
@@ -645,7 +638,8 @@ export const DRPlannerPage: React.FC = () => {
               <div className="p-3 rounded bg-slate-950 border border-slate-800 space-y-1">
                 <div>Model: <span className="text-cyan-300 font-bold">{deploymentStrategy.toUpperCase()}</span></div>
                 <div>Standby SDDC Nodes: <span className="text-white font-bold">{calculations.standbyNodes} Nodes</span></div>
-                <div>Estimated Monthly Savings: <span className="text-emerald-300 font-bold">${calculations.monthlySavings.toLocaleString()}</span></div>
+                <div>Standby Host Reduction: <span className="text-emerald-300 font-bold">-{calculations.hostReductionNodes} Nodes ({calculations.hostReductionPercent}%)</span></div>
+                <div>CDP Journal Retention: <span className="text-cyan-300 font-bold">{calculations.journalOverheadTB} TB</span></div>
               </div>
             </div>
           </div>

@@ -10,14 +10,14 @@ export const WorkbenchHubPage: React.FC = () => {
       path: '/tools/sizing',
       icon: Cpu,
       title: 'Multi-Cloud Node & Storage Sizing Estimator',
-      subtitle: 'Decoupled Storage Cost & Sprawl Optimizer',
+      subtitle: 'Decoupled Storage & Usable Policy Optimizer',
       badge: 'Compute & Storage',
       accentColor: 'border-cyan-500/40 text-cyan-400 bg-cyan-950/20',
       description: 'Model real-world bare-metal node requirements across Azure AVS (AV36P/AV64), AWS VMC (i3en/i4i), and Google Cloud GCVE (ve1/ve2). Calculate node reduction gains when offloading data to external NFS storage (ANF / Amazon FSx ONTAP).',
       capabilities: [
         'Dynamic vSAN node sprawl vs. decoupled storage comparison',
         'vCPU overcommit ratios (1:1 to 4:1) & RAM buffers',
-        'Live cost modeling and TCO reduction forecast',
+        'Storage policy modeling (RAID 1, RAID 5, RAID 6) with slack factors',
         'Export sizing specifications into Blueprint Generator'
       ]
     },

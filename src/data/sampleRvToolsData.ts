@@ -30,10 +30,19 @@ export interface ParsedVMRecord {
   portGroup: string;
   vlanId: number;
   environment: VMEnvironment;
-  assignedWave: 0 | 1 | 2 | 3;
+  assignedWave: 0 | 1 | 2 | 3 | 4;
   targetStorageTier: StorageTierOption;
-  recommendedMethod: 'HCX Bulk Migration' | 'HCX Cold Migration' | 'HCX RAV (Live vMotion)';
+  recommendedMethod: 'HCX Bulk Migration' | 'HCX Cold Migration' | 'HCX RAV (Live vMotion)' | 'Re-architect Required';
   readinessReason: string;
+
+  // Hypervisor Compatibility & Hardware Attributes
+  hardwareVersion?: number;
+  vnicType?: string;
+  storageController?: string;
+  isRdmPhysical?: boolean;
+  isRdmVirtual?: boolean;
+  isMultiWriter?: boolean;
+  isSharedScsi?: boolean;
 }
 
 export const SAMPLE_ENTERPRISE_VMS: ParsedVMRecord[] = [
@@ -62,7 +71,10 @@ export const SAMPLE_ENTERPRISE_VMS: ParsedVMRecord[] = [
     assignedWave: 0,
     targetStorageTier: 'Local vSAN',
     recommendedMethod: 'HCX RAV (Live vMotion)',
-    readinessReason: 'Local management domain controller. Flagged as Management Infra (Out of Scope by default) to prevent sizing distortion.'
+    readinessReason: 'Local management domain controller. Flagged as Management Infra (Out of Scope by default) to prevent sizing distortion.',
+    hardwareVersion: 19,
+    vnicType: 'VMXNET3',
+    storageController: 'PVSCSI'
   },
   {
     vmName: 'CORP-DNS-INFOBLOX-01',
@@ -88,7 +100,10 @@ export const SAMPLE_ENTERPRISE_VMS: ParsedVMRecord[] = [
     assignedWave: 0,
     targetStorageTier: 'Local vSAN',
     recommendedMethod: 'HCX RAV (Live vMotion)',
-    readinessReason: 'Core Enterprise DNS / IPAM appliance. Management network detected. Out of scope for target cloud tenant sizing.'
+    readinessReason: 'Core Enterprise DNS / IPAM appliance. Management network detected. Out of scope for target cloud tenant sizing.',
+    hardwareVersion: 17,
+    vnicType: 'VMXNET3',
+    storageController: 'PVSCSI'
   },
   {
     vmName: 'MON-SPLUNK-INDEXER-01',
@@ -114,7 +129,10 @@ export const SAMPLE_ENTERPRISE_VMS: ParsedVMRecord[] = [
     assignedWave: 0,
     targetStorageTier: 'Local vSAN',
     recommendedMethod: 'HCX Bulk Migration',
-    readinessReason: 'Enterprise log indexer on management VLAN. User toggled In Scope for migration monitoring.'
+    readinessReason: 'Enterprise log indexer on management VLAN. User toggled In Scope for migration monitoring.',
+    hardwareVersion: 19,
+    vnicType: 'VMXNET3',
+    storageController: 'PVSCSI'
   },
 
   // Wave 1: Development, QA & Staging Workloads
@@ -142,7 +160,10 @@ export const SAMPLE_ENTERPRISE_VMS: ParsedVMRecord[] = [
     assignedWave: 1,
     targetStorageTier: 'Local vSAN',
     recommendedMethod: 'HCX Cold Migration',
-    readinessReason: 'CRITICAL SNAPSHOT RISK: Active snapshot is 45 days old (45 GiB). Consolidate snapshot in vCenter before performing cold sync.'
+    readinessReason: 'CRITICAL SNAPSHOT RISK: Active snapshot is 45 days old (45 GiB). Consolidate snapshot in vCenter before performing cold sync.',
+    hardwareVersion: 13,
+    vnicType: 'E1000E',
+    storageController: 'LSI_LOGIC_SAS'
   },
   {
     vmName: 'STG-SAP-APP-01',
@@ -161,25 +182,28 @@ export const SAMPLE_ENTERPRISE_VMS: ParsedVMRecord[] = [
     hasSnapshot: false,
     snapshotAgeHours: 0,
     snapshotSizeGiB: 0,
-    toolsStatus: 'Linux Open-VM-Tools (Verified)',
-    portGroup: 'VLAN-20-APP-TIER',
-    vlanId: 20,
+    toolsStatus: 'Healthy (Running)',
+    portGroup: 'VLAN-50-STAGING-APP',
+    vlanId: 50,
     environment: 'Staging',
     assignedWave: 1,
     targetStorageTier: 'Local vSAN',
-    recommendedMethod: 'HCX Bulk Migration',
-    readinessReason: 'Staging ERP service. Baseline bulk seed with scheduled reboot to validate SAP cloud connectivity.'
+    recommendedMethod: 'HCX RAV (Live vMotion)',
+    readinessReason: 'Healthy staging application server. High memory footprint, ideal candidate for initial migration verification wave.',
+    hardwareVersion: 19,
+    vnicType: 'VMXNET3',
+    storageController: 'PVSCSI'
   },
   {
-    vmName: 'DEV-QA-API-GATEWAY',
+    vmName: 'QA-PORTAL-WEB-01',
     scope: 'In Scope',
     isManagementInfra: false,
     powerState: 'poweredOn',
     cpus: 4,
     memoryGiB: 16,
-    provisionedDiskGiB: 256,
-    inUseDiskGiB: 110,
-    storageTiB: 0.25,
+    provisionedDiskGiB: 200,
+    inUseDiskGiB: 80,
+    storageTiB: 0.195,
     provisioningType: 'Thin',
     os: 'Ubuntu Linux 20.04 (64-bit)',
     datacenter: 'DC-West-Oregon',
@@ -187,159 +211,148 @@ export const SAMPLE_ENTERPRISE_VMS: ParsedVMRecord[] = [
     hasSnapshot: false,
     snapshotAgeHours: 0,
     snapshotSizeGiB: 0,
-    toolsStatus: 'Healthy (Running)',
+    toolsStatus: 'Linux Open-VM-Tools (Verified)',
     portGroup: 'VLAN-40-DEV-WORKLOADS',
     vlanId: 40,
     environment: 'QA',
     assignedWave: 1,
     targetStorageTier: 'Local vSAN',
-    recommendedMethod: 'HCX Bulk Migration',
-    readinessReason: 'Non-production API gateway. Scheduled cutover in Wave 1 validates HCX Network Extension latency.'
+    recommendedMethod: 'HCX RAV (Live vMotion)',
+    readinessReason: 'QA front-end node. Zero dependencies; ready for Wave 1 live migration.',
+    hardwareVersion: 17,
+    vnicType: 'VMXNET3',
+    storageController: 'PVSCSI'
   },
 
-  // Wave 2: Production Web & Application Middleware Tiers
+  // Wave 2: Production Web & Middleware Tier
   {
-    vmName: 'PRD-APP-WEBSVC-01',
-    scope: 'In Scope',
-    isManagementInfra: false,
-    powerState: 'poweredOn',
-    cpus: 4,
-    memoryGiB: 16,
-    provisionedDiskGiB: 160,
-    inUseDiskGiB: 62,
-    storageTiB: 0.156,
-    provisioningType: 'Thin',
-    os: 'Ubuntu Linux 22.04 (64-bit)',
-    datacenter: 'DC-East-Ashburn',
-    cluster: 'PRD-Compute-Cluster-02',
-    hasSnapshot: false,
-    snapshotAgeHours: 0,
-    snapshotSizeGiB: 0,
-    toolsStatus: 'Healthy (Running)',
-    portGroup: 'VLAN-10-WEB-TIER',
-    vlanId: 10,
-    environment: 'Prod',
-    assignedWave: 2,
-    targetStorageTier: 'Local vSAN',
-    recommendedMethod: 'HCX RAV (Live vMotion)',
-    readinessReason: 'Stateless production web tier node. Zero user session disruption via live RAV migration.'
-  },
-  {
-    vmName: 'PRD-APP-WEBSVC-02',
-    scope: 'In Scope',
-    isManagementInfra: false,
-    powerState: 'poweredOn',
-    cpus: 4,
-    memoryGiB: 16,
-    provisionedDiskGiB: 160,
-    inUseDiskGiB: 64,
-    storageTiB: 0.156,
-    provisioningType: 'Thin',
-    os: 'Ubuntu Linux 22.04 (64-bit)',
-    datacenter: 'DC-East-Ashburn',
-    cluster: 'PRD-Compute-Cluster-02',
-    hasSnapshot: false,
-    snapshotAgeHours: 0,
-    snapshotSizeGiB: 0,
-    toolsStatus: 'Healthy (Running)',
-    portGroup: 'VLAN-10-WEB-TIER',
-    vlanId: 10,
-    environment: 'Prod',
-    assignedWave: 2,
-    targetStorageTier: 'Local vSAN',
-    recommendedMethod: 'HCX RAV (Live vMotion)',
-    readinessReason: 'Paired production web tier node. Migrate in Wave 2 with MON enabled to eliminate hairpin routing.'
-  },
-  {
-    vmName: 'PRD-MID-KAFKA-BROKER-01',
+    vmName: 'PRD-WEB-FRONTEND-01',
     scope: 'In Scope',
     isManagementInfra: false,
     powerState: 'poweredOn',
     cpus: 8,
     memoryGiB: 32,
-    provisionedDiskGiB: 1024,
-    inUseDiskGiB: 620,
-    storageTiB: 1.0,
-    provisioningType: 'Thick',
+    provisionedDiskGiB: 300,
+    inUseDiskGiB: 120,
+    storageTiB: 0.293,
+    provisioningType: 'Thin',
     os: 'Red Hat Enterprise Linux 8 (64-bit)',
     datacenter: 'DC-East-Ashburn',
     cluster: 'PRD-Compute-Cluster-01',
     hasSnapshot: false,
     snapshotAgeHours: 0,
     snapshotSizeGiB: 0,
-    toolsStatus: 'Linux Open-VM-Tools (Verified)',
-    portGroup: 'VLAN-20-APP-TIER',
+    toolsStatus: 'Healthy (Running)',
+    portGroup: 'VLAN-10-PROD-WEB',
+    vlanId: 10,
+    environment: 'Prod',
+    assignedWave: 2,
+    targetStorageTier: 'Local vSAN',
+    recommendedMethod: 'HCX RAV (Live vMotion)',
+    readinessReason: 'Production web layer node. Member of Avi Vantage load balancer pool. Zero-downtime RAV candidate.',
+    hardwareVersion: 19,
+    vnicType: 'VMXNET3',
+    storageController: 'PVSCSI'
+  },
+  {
+    vmName: 'PRD-WEB-FRONTEND-02',
+    scope: 'In Scope',
+    isManagementInfra: false,
+    powerState: 'poweredOn',
+    cpus: 8,
+    memoryGiB: 32,
+    provisionedDiskGiB: 300,
+    inUseDiskGiB: 125,
+    storageTiB: 0.293,
+    provisioningType: 'Thin',
+    os: 'Red Hat Enterprise Linux 8 (64-bit)',
+    datacenter: 'DC-East-Ashburn',
+    cluster: 'PRD-Compute-Cluster-01',
+    hasSnapshot: false,
+    snapshotAgeHours: 0,
+    snapshotSizeGiB: 0,
+    toolsStatus: 'Healthy (Running)',
+    portGroup: 'VLAN-10-PROD-WEB',
+    vlanId: 10,
+    environment: 'Prod',
+    assignedWave: 2,
+    targetStorageTier: 'Local vSAN',
+    recommendedMethod: 'HCX RAV (Live vMotion)',
+    readinessReason: 'Second web frontend node. Pair with PRD-WEB-FRONTEND-01 during Wave 2 cutover.',
+    hardwareVersion: 19,
+    vnicType: 'VMXNET3',
+    storageController: 'PVSCSI'
+  },
+  {
+    vmName: 'PRD-APP-MIDDLEWARE-01',
+    scope: 'In Scope',
+    isManagementInfra: false,
+    powerState: 'poweredOn',
+    cpus: 16,
+    memoryGiB: 64,
+    provisionedDiskGiB: 600,
+    inUseDiskGiB: 280,
+    storageTiB: 0.586,
+    provisioningType: 'Thin',
+    os: 'Microsoft Windows Server 2019 (64-bit)',
+    datacenter: 'DC-East-Ashburn',
+    cluster: 'PRD-Compute-Cluster-01',
+    hasSnapshot: false,
+    snapshotAgeHours: 0,
+    snapshotSizeGiB: 0,
+    toolsStatus: 'Healthy (Running)',
+    portGroup: 'VLAN-20-PROD-APP',
+    vlanId: 20,
+    environment: 'Prod',
+    assignedWave: 2,
+    targetStorageTier: 'Local vSAN',
+    recommendedMethod: 'HCX RAV (Live vMotion)',
+    readinessReason: 'Core enterprise business middleware. High compute allocation, optimized for vSAN.',
+    hardwareVersion: 19,
+    vnicType: 'VMXNET3',
+    storageController: 'PVSCSI'
+  },
+  {
+    vmName: 'LEGACY-APP-REPORTING',
+    scope: 'In Scope',
+    isManagementInfra: false,
+    powerState: 'poweredOn',
+    cpus: 4,
+    memoryGiB: 16,
+    provisionedDiskGiB: 400,
+    inUseDiskGiB: 210,
+    storageTiB: 0.39,
+    provisioningType: 'Thin',
+    os: 'Microsoft Windows Server 2012 R2 (64-bit)',
+    datacenter: 'DC-East-Ashburn',
+    cluster: 'PRD-Compute-Cluster-01',
+    hasSnapshot: false,
+    snapshotAgeHours: 0,
+    snapshotSizeGiB: 0,
+    toolsStatus: 'Outdated (Update Prior to Cutover)',
+    portGroup: 'VLAN-20-PROD-APP',
     vlanId: 20,
     environment: 'Prod',
     assignedWave: 2,
     targetStorageTier: 'Local vSAN',
     recommendedMethod: 'HCX Bulk Migration',
-    readinessReason: 'Streaming middleware broker. Bulk seed overnight; execute 5-minute maintenance reboot during scheduled window.'
-  },
-  {
-    vmName: 'LEGACY-MONITOR-SRV',
-    scope: 'To Be Decided',
-    isManagementInfra: true,
-    powerState: 'poweredOn',
-    cpus: 2,
-    memoryGiB: 8,
-    provisionedDiskGiB: 300,
-    inUseDiskGiB: 220,
-    storageTiB: 0.293,
-    provisioningType: 'Thick',
-    os: 'CentOS 6 (64-bit)',
-    datacenter: 'DC-East-Ashburn',
-    cluster: 'MGMT-Cluster-01',
-    hasSnapshot: true,
-    snapshotAgeHours: 4320, // 180 days
-    snapshotSizeGiB: 38,
-    toolsStatus: 'Missing / Stopped (Critical Migration Risk)',
-    portGroup: 'VLAN-100-MGMT-IDENTITY',
-    vlanId: 100,
-    environment: 'Prod',
-    assignedWave: 2,
-    targetStorageTier: 'Local vSAN',
-    recommendedMethod: 'HCX Bulk Migration',
-    readinessReason: 'CRITICAL RISK: Missing VMware Tools and 180-day snapshot (38 GiB). Status set to To Be Decided pending remediation.'
+    readinessReason: 'LEGACY DRIVER WARNING: Configured with emulated E1000E vNIC and LSI Logic Parallel controller. Recommend converting to VMXNET3/PVSCSI.',
+    hardwareVersion: 13,
+    vnicType: 'E1000E',
+    storageController: 'LSI_LOGIC_PARALLEL'
   },
 
-  // Wave 3: Mission-Critical Transactional Databases (Auto-recommended for External NFS if >= 2 TiB)
+  // Wave 3: Mission-Critical Databases & Storage-Intensive Backend
   {
-    vmName: 'PRD-DB-ORACLE-RAC01',
+    vmName: 'PRD-SQL-ENTERPRISE-01',
     scope: 'In Scope',
     isManagementInfra: false,
     powerState: 'poweredOn',
-    cpus: 16,
-    memoryGiB: 128,
-    provisionedDiskGiB: 2457.6, // 2.4 TiB
-    inUseDiskGiB: 1850,
-    storageTiB: 2.4,
-    provisioningType: 'Thick',
-    os: 'Red Hat Enterprise Linux 8 (64-bit)',
-    datacenter: 'DC-East-Ashburn',
-    cluster: 'PRD-Compute-Cluster-01',
-    hasSnapshot: false,
-    snapshotAgeHours: 0,
-    snapshotSizeGiB: 0,
-    toolsStatus: 'Linux Open-VM-Tools (Verified)',
-    portGroup: 'VLAN-30-DB-TIER',
-    vlanId: 30,
-    environment: 'Prod',
-    assignedWave: 3,
-    targetStorageTier: 'External NFS', // Auto-recommended due to >= 2 TiB
-    recommendedMethod: 'HCX Bulk Migration',
-    readinessReason: 'High-capacity Oracle RAC node (2.4 TiB >= 2 TiB). Auto-recommended for Decoupled External NFS Storage (ANF/FSx) to prevent vSAN node sprawl.'
-  },
-  {
-    vmName: 'PRD-DB-SQL-ALWAYS-ON01',
-    scope: 'In Scope',
-    isManagementInfra: false,
-    powerState: 'poweredOn',
-    cpus: 12,
-    memoryGiB: 64,
-    provisionedDiskGiB: 1228.8, // 1.2 TiB
-    inUseDiskGiB: 890,
-    storageTiB: 1.2,
+    cpus: 32,
+    memoryGiB: 256,
+    provisionedDiskGiB: 8192,
+    inUseDiskGiB: 6400,
+    storageTiB: 6.25,
     provisioningType: 'Thick',
     os: 'Microsoft Windows Server 2022 (64-bit)',
     datacenter: 'DC-East-Ashburn',
@@ -348,58 +361,146 @@ export const SAMPLE_ENTERPRISE_VMS: ParsedVMRecord[] = [
     snapshotAgeHours: 0,
     snapshotSizeGiB: 0,
     toolsStatus: 'Healthy (Running)',
-    portGroup: 'VLAN-30-DB-TIER',
+    portGroup: 'VLAN-30-PROD-DB',
     vlanId: 30,
     environment: 'Prod',
     assignedWave: 3,
-    targetStorageTier: 'Local vSAN',
-    recommendedMethod: 'HCX RAV (Live vMotion)',
-    readinessReason: 'SQL Always-On primary node (< 2 TiB). High IOPs transactional IO assigned to Local vSAN tier. Live RAV migration preserves cluster quorum.'
+    targetStorageTier: 'External NFS',
+    recommendedMethod: 'HCX Bulk Migration',
+    readinessReason: 'MISSION-CRITICAL DATABASE: 6.25 TiB active storage. Target External NFS datastore (Azure NetApp Files / AWS FSx ONTAP / Google Cloud NetApp Volumes) recommended.',
+    hardwareVersion: 19,
+    vnicType: 'VMXNET3',
+    storageController: 'PVSCSI'
+  },
+  {
+    vmName: 'PRD-SQL-ENTERPRISE-02',
+    scope: 'In Scope',
+    isManagementInfra: false,
+    powerState: 'poweredOn',
+    cpus: 32,
+    memoryGiB: 256,
+    provisionedDiskGiB: 8192,
+    inUseDiskGiB: 6400,
+    storageTiB: 6.25,
+    provisioningType: 'Thick',
+    os: 'Microsoft Windows Server 2022 (64-bit)',
+    datacenter: 'DC-East-Ashburn',
+    cluster: 'PRD-Compute-Cluster-01',
+    hasSnapshot: false,
+    snapshotAgeHours: 0,
+    snapshotSizeGiB: 0,
+    toolsStatus: 'Healthy (Running)',
+    portGroup: 'VLAN-30-PROD-DB',
+    vlanId: 30,
+    environment: 'Prod',
+    assignedWave: 3,
+    targetStorageTier: 'External NFS',
+    recommendedMethod: 'HCX Bulk Migration',
+    readinessReason: 'Partner node in SQL Always-On Availability Group. Offload to External NFS datastore to prevent vSAN node sprawl.',
+    hardwareVersion: 19,
+    vnicType: 'VMXNET3',
+    storageController: 'PVSCSI'
+  },
+
+  // Wave 4: Blocker Remediation Wave (RDM Physical & Multi-Writer)
+  {
+    vmName: 'PRD-ORACLE-RAC-01',
+    scope: 'In Scope',
+    isManagementInfra: false,
+    powerState: 'poweredOn',
+    cpus: 24,
+    memoryGiB: 128,
+    provisionedDiskGiB: 4096,
+    inUseDiskGiB: 3200,
+    storageTiB: 3.125,
+    provisioningType: 'Thick',
+    os: 'Oracle Enterprise Linux 8 (64-bit)',
+    datacenter: 'DC-East-Ashburn',
+    cluster: 'PRD-Compute-Cluster-01',
+    hasSnapshot: false,
+    snapshotAgeHours: 0,
+    snapshotSizeGiB: 0,
+    toolsStatus: 'Healthy (Running)',
+    portGroup: 'VLAN-30-PROD-DB',
+    vlanId: 30,
+    environment: 'Prod',
+    assignedWave: 4,
+    targetStorageTier: 'External NFS',
+    recommendedMethod: 'Re-architect Required',
+    readinessReason: 'CRITICAL BLOCKER: Attached to Physical Compatibility RDM (RDM-P) and Shared SCSI Bus. Must be re-architected or converted to VMDK before HCX replication.',
+    hardwareVersion: 17,
+    vnicType: 'VMXNET3',
+    storageController: 'PVSCSI',
+    isRdmPhysical: true,
+    isSharedScsi: true,
+    isMultiWriter: true
   }
 ];
 
 /**
- * Generates and downloads a realistic RVTools .xlsx file for testing with multi-sheet structure
+ * Downloads a sample raw RVTools Excel workbook (.xlsx) containing all standard sheets:
+ * vInfo, vDisk, vMemory, vNetwork, vTools, vSnapshot.
  */
 export function generateSampleRvToolsXlsx(): void {
-  const vInfoRows = SAMPLE_ENTERPRISE_VMS.map(vm => ({
+  const vInfoRows = SAMPLE_ENTERPRISE_VMS.map((vm, idx) => ({
     VM: vm.vmName,
     Powerstate: vm.powerState,
+    Template: false,
     CPUs: vm.cpus,
-    Memory: vm.memoryGiB * 1024, // Raw MiB
-    'Provisioned MB': Math.round(vm.provisionedDiskGiB * 1024),
-    'In Use MB': Math.round(vm.inUseDiskGiB * 1024),
+    Memory: vm.memoryGiB * 1024,
+    'Provisioned MB': vm.provisionedDiskGiB * 1024,
+    'In Use MB': vm.inUseDiskGiB * 1024,
     'OS according to the configuration file': vm.os,
+    'Configured HW version': `vmx-${vm.hardwareVersion || 19}`,
     Datacenter: vm.datacenter,
     Cluster: vm.cluster,
-    'VMware Tools':
-      vm.toolsStatus === 'Healthy (Running)' || vm.toolsStatus === 'Linux Open-VM-Tools (Verified)'
-        ? 'guestToolsRunning'
-        : 'guestToolsNotRunning',
-    Annotation: `Migration Wave ${vm.assignedWave} · ${vm.scope}`
+    Host: `esxi-blade-0${(idx % 4) + 1}.corp.internal`,
+    'VM ID': `vm-${1000 + idx}`,
+    'Tools status': vm.toolsStatus.includes('Healthy') ? 'toolsOk' : 'toolsOld'
   }));
 
-  const vDiskRows = SAMPLE_ENTERPRISE_VMS.map(vm => ({
+  const vDiskRows = SAMPLE_ENTERPRISE_VMS.flatMap((vm, idx) => {
+    const isBig = vm.storageTiB > 2.0;
+    const disks = [
+      {
+        VM: vm.vmName,
+        Disk: 'Hard disk 1',
+        'Capacity MB': Math.round((vm.provisionedDiskGiB * 1024) * (isBig ? 0.3 : 1)),
+        'Free MB': Math.round((vm.provisionedDiskGiB - vm.inUseDiskGiB) * 1024 * (isBig ? 0.3 : 1)),
+        Controller: vm.storageController || 'SCSI controller 0 (PVSCSI)',
+        'Disk Type': vm.isRdmPhysical ? 'Raw Device Mapping (Physical)' : 'Flat',
+        Sharing: vm.isSharedScsi ? 'physicalSharing' : 'none',
+        'Multi-Writer': vm.isMultiWriter ? 'true' : 'false'
+      }
+    ];
+
+    if (isBig) {
+      disks.push({
+        VM: vm.vmName,
+        Disk: 'Hard disk 2 (Data Volume)',
+        'Capacity MB': Math.round((vm.provisionedDiskGiB * 1024) * 0.7),
+        'Free MB': Math.round((vm.provisionedDiskGiB - vm.inUseDiskGiB) * 1024 * 0.7),
+        Controller: vm.storageController || 'SCSI controller 0 (PVSCSI)',
+        'Disk Type': vm.isRdmPhysical ? 'Raw Device Mapping (Physical)' : 'Flat',
+        Sharing: vm.isSharedScsi ? 'physicalSharing' : 'none',
+        'Multi-Writer': vm.isMultiWriter ? 'true' : 'false'
+      });
+    }
+
+    return disks;
+  });
+
+  const vSnapshotRows = SAMPLE_ENTERPRISE_VMS.filter(vm => vm.hasSnapshot).map(vm => ({
     VM: vm.vmName,
-    Disk: 'Hard disk 1',
-    'Capacity MB': Math.round(vm.provisionedDiskGiB * 1024),
-    'Disk Type': vm.provisioningType,
-    Datastore: 'vsanDatastore'
+    Snapshot: 'Pre-Patching Snapshot',
+    'Date / time': new Date(Date.now() - vm.snapshotAgeHours * 3600000).toISOString(),
+    'Size MB': vm.snapshotSizeGiB * 1024
   }));
-
-  const vSnapshotRows = SAMPLE_ENTERPRISE_VMS
-    .filter(vm => vm.hasSnapshot)
-    .map(vm => ({
-      VM: vm.vmName,
-      Snapshot: 'Pre-Migration-Backup',
-      'Date / time': new Date(Date.now() - vm.snapshotAgeHours * 3600000).toISOString(),
-      'Size MB': vm.snapshotSizeGiB * 1024,
-      Quiesced: 'False'
-    }));
 
   const vNetworkRows = SAMPLE_ENTERPRISE_VMS.map(vm => ({
     VM: vm.vmName,
     NIC: 'Network adapter 1',
+    Adapter: vm.vnicType || 'VMXNET3',
     Network: vm.portGroup,
     VLAN: vm.vlanId,
     'IP Address': `10.${vm.vlanId}.10.${Math.floor(Math.random() * 200) + 10}`,
@@ -415,9 +516,18 @@ export function generateSampleRvToolsXlsx(): void {
     'Tools Version': vm.toolsStatus === 'Healthy (Running)' ? '12352' : '10346'
   }));
 
+  const vMemoryRows = SAMPLE_ENTERPRISE_VMS.map(vm => ({
+    VM: vm.vmName,
+    Size: vm.memoryGiB * 1024,
+    Shares: 'Normal',
+    Reservation: 0,
+    Overhead: 128
+  }));
+
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(vInfoRows), 'vInfo');
   XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(vDiskRows), 'vDisk');
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(vMemoryRows), 'vMemory');
   XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(vSnapshotRows), 'vSnapshot');
   XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(vNetworkRows), 'vNetwork');
   XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(vToolsRows), 'vTools');
@@ -426,7 +536,8 @@ export function generateSampleRvToolsXlsx(): void {
 }
 
 /**
- * Generates an executive 4-tab assessment workbook (.xlsx) with exact Base-2 values and scoping
+ * Generates an executive technical assessment workbook (.xlsx) with strict Base-2 values and scoping.
+ * ZERO COSTING: Completely devoid of currency, monthly run rate, and pricing models.
  */
 export function exportMultiTabRvToolsAssessment(
   vmRecords: ParsedVMRecord[],
@@ -437,36 +548,46 @@ export function exportMultiTabRvToolsAssessment(
     cloudNodes: number;
     inScopeVMCount: number;
     totalVCPUs: number;
+    effectiveCores: number;
     totalRAMGiB: number;
+    bufferedRAMGiB: number;
     totalStorageTiB: number;
+    vsanStorageTiB: number;
     decoupledStorageTiB: number;
-    monthlyRunRateUSD: number;
-    monthlySavingsUSD: number;
+    storagePolicyApplied: string;
+    vCpuOvercommit: number;
+    ramBufferPercent: number;
+    blockersCount: number;
   }
 ): void {
   const wb = XLSX.utils.book_new();
 
-  // Tab 1: Executive Summary & Cloud Sizing
+  // Tab 1: Executive Summary & Cloud Capacity Sizing (Zero Costing)
   const summaryRows = [
     { Metric: 'RVTools Assessment Source', Value: fileName },
     { Metric: 'Target Hyperscaler Ecosystem', Value: cloudEstimate.targetCloud },
-    { Metric: 'Selected Bare-Metal Node SKU', Value: cloudEstimate.nodeSku },
+    { Metric: 'Selected Bare-Metal Host SKU', Value: cloudEstimate.nodeSku },
     { Metric: 'Total Workloads Assessed', Value: vmRecords.length },
-    { Metric: 'Workloads Included In-Scope', Value: cloudEstimate.inScopeVMCount },
-    { Metric: 'Workloads Marked Out-of-Scope (Mgmt / Retired)', Value: vmRecords.filter(v => v.scope === 'Out of Scope').length },
+    { Metric: 'Workloads In-Scope', Value: cloudEstimate.inScopeVMCount },
+    { Metric: 'Workloads Out-of-Scope (Mgmt / Retired)', Value: vmRecords.filter(v => v.scope === 'Out of Scope').length },
     { Metric: 'Workloads To Be Decided', Value: vmRecords.filter(v => v.scope === 'To Be Decided').length },
-    { Metric: 'In-Scope Total vCPU Cores', Value: cloudEstimate.totalVCPUs },
+    { Metric: 'In-Scope Raw vCPUs', Value: cloudEstimate.totalVCPUs },
+    { Metric: 'vCPU Overcommit Ratio Applied', Value: `${cloudEstimate.vCpuOvercommit}:1` },
+    { Metric: 'Calculated Physical Cores Required', Value: cloudEstimate.effectiveCores },
     { Metric: 'In-Scope Allocated Memory (GiB - Base-2)', Value: cloudEstimate.totalRAMGiB },
-    { Metric: 'In-Scope Provisioned Storage (TiB - Base-2)', Value: cloudEstimate.totalStorageTiB },
+    { Metric: 'RAM Overhead Buffer Applied', Value: `+${cloudEstimate.ramBufferPercent}%` },
+    { Metric: 'Buffered Memory Required (GiB)', Value: cloudEstimate.bufferedRAMGiB },
+    { Metric: 'Total Workload Storage (TiB - Base-2)', Value: cloudEstimate.totalStorageTiB },
+    { Metric: 'Storage Policy Applied', Value: cloudEstimate.storagePolicyApplied },
+    { Metric: 'Cluster vSAN Usable Storage (TiB)', Value: cloudEstimate.vsanStorageTiB },
     { Metric: 'Storage Offloaded to External NFS (TiB)', Value: cloudEstimate.decoupledStorageTiB },
-    { Metric: 'Required Bare-Metal Cloud Hosts (N+1 HA)', Value: cloudEstimate.cloudNodes },
-    { Metric: 'Estimated Monthly Run-Rate (USD)', Value: `$${cloudEstimate.monthlyRunRateUSD.toLocaleString()}` },
-    { Metric: 'Projected Monthly Storage Sprawl Savings', Value: `$${cloudEstimate.monthlySavingsUSD.toLocaleString()}` },
+    { Metric: 'Required Bare-Metal Cloud Hosts (N+1 Resiliency)', Value: cloudEstimate.cloudNodes },
+    { Metric: 'Migration Blockers & Complex Configurations Flagged', Value: cloudEstimate.blockersCount },
     { Metric: 'Assessment Export Date', Value: new Date().toISOString() }
   ];
   XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(summaryRows), 'Executive Summary');
 
-  // Tab 2: Workload Assessment & HCX Mapping
+  // Tab 2: Workload Assessment & Compatibility Mapping
   const workloadRows = vmRecords.map(vm => ({
     'VM Name': vm.vmName,
     'Scope Decision': vm.scope,
@@ -478,26 +599,32 @@ export function exportMultiTabRvToolsAssessment(
     'vCPUs': vm.cpus,
     'RAM (GiB)': vm.memoryGiB,
     'Provisioned Disk (GiB)': vm.provisionedDiskGiB,
-    'Capacity (TiB)': vm.storageTiB,
+    'In-Use Capacity (TiB)': vm.storageTiB,
     'Provisioning': vm.provisioningType,
+    'Virtual Hardware': `vHardware ${vm.hardwareVersion || 19}`,
+    'Network Adapter': vm.vnicType || 'VMXNET3',
+    'Storage Controller': vm.storageController || 'PVSCSI',
+    'RDM Physical Mode': vm.isRdmPhysical ? 'YES (CRITICAL BLOCKER)' : 'No',
+    'Multi-Writer / Shared SCSI': vm.isMultiWriter || vm.isSharedScsi ? 'YES (CLUSTER STAGING REQUIRED)' : 'No',
     'Operating System': vm.os,
     'Port Group': vm.portGroup,
     'VLAN ID': vm.vlanId,
-    'Snapshot Health': vm.hasSnapshot ? `CRITICAL (${vm.snapshotAgeHours}h / ${vm.snapshotSizeGiB}GiB)` : 'Healthy',
+    'Snapshot Health': vm.hasSnapshot ? `RISK (${vm.snapshotAgeHours}h / ${vm.snapshotSizeGiB}GiB)` : 'Healthy',
     'VMware Tools Status': vm.toolsStatus,
-    'Recommended HCX Method': vm.recommendedMethod,
+    'Recommended Migration Method': vm.recommendedMethod,
     'Architectural Rationale': vm.readinessReason
   }));
   XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(workloadRows), 'Workload Assessment');
 
-  // Tab 3: Wave Schedule & Execution Sequence
+  // Tab 3: Migration Wave Plan (Zero Costing)
   const waveNames = [
     'Wave 0: Shared Services & Core Infrastructure',
     'Wave 1: Dev, QA & Staging Systems',
     'Wave 2: Production Web & Middleware Tiers',
-    'Wave 3: Mission-Critical Databases'
+    'Wave 3: Mission-Critical Databases',
+    'Wave 4: Blocker Remediation Wave'
   ];
-  const waveRows = [0, 1, 2, 3].map(w => {
+  const waveRows = [0, 1, 2, 3, 4].map(w => {
     const inWave = vmRecords.filter(v => v.assignedWave === w && v.scope === 'In Scope');
     return {
       'Migration Wave': waveNames[w],
@@ -505,17 +632,21 @@ export function exportMultiTabRvToolsAssessment(
       'Total vCPUs': inWave.reduce((a, v) => a + v.cpus, 0),
       'Total RAM (GiB)': inWave.reduce((a, v) => a + v.memoryGiB, 0),
       'Total Storage (TiB)': Math.round(inWave.reduce((a, v) => a + v.storageTiB, 0) * 10) / 10,
+      'vSAN Storage (TiB)': Math.round(
+        inWave.filter(v => v.targetStorageTier === 'Local vSAN').reduce((a, v) => a + v.storageTiB, 0) * 10
+      ) / 10,
       'External NFS Storage (TiB)': Math.round(
         inWave.filter(v => v.targetStorageTier === 'External NFS').reduce((a, v) => a + v.storageTiB, 0) * 10
       ) / 10,
       'RAV (Live vMotion)': inWave.filter(v => v.recommendedMethod === 'HCX RAV (Live vMotion)').length,
       'Bulk Migration': inWave.filter(v => v.recommendedMethod === 'HCX Bulk Migration').length,
-      'Cold Migration': inWave.filter(v => v.recommendedMethod === 'HCX Cold Migration').length
+      'Cold Migration': inWave.filter(v => v.recommendedMethod === 'HCX Cold Migration').length,
+      'Re-architect Required': inWave.filter(v => v.recommendedMethod === 'Re-architect Required').length
     };
   });
   XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(waveRows), 'Wave Schedule');
 
-  // Tab 4: Stretched L2 VLAN & Subnet Inventory
+  // Tab 4: Stretched L2 Network Extensions
   const vlanMap = new Map<string, { portGroup: string; vlanId: number; vmCount: number; vms: string[] }>();
   vmRecords.filter(v => v.scope === 'In Scope').forEach(vm => {
     const key = vm.portGroup || `VLAN-${vm.vlanId}`;
@@ -535,5 +666,5 @@ export function exportMultiTabRvToolsAssessment(
   }));
   XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(vlanRows), 'Stretched L2 VLANs');
 
-  XLSX.writeFile(wb, `Zaboraa_RVTools_Precision_Assessment_${fileName.replace(/[^a-zA-Z0-9]/g, '_')}.xlsx`);
+  XLSX.writeFile(wb, `Zaboraa_Technical_Assessment_${fileName.replace(/[^a-zA-Z0-9]/g, '_')}.xlsx`);
 }

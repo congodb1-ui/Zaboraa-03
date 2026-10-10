@@ -1,6 +1,11 @@
 import React, { useState, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Cpu, HardDrive, ArrowRight, ShieldCheck, Zap, Info, Sliders, CheckCircle2, RotateCcw, Download } from 'lucide-react';
+import { Cpu, HardDrive, ArrowRight, ShieldCheck, Zap, Info, Sliders, CheckCircle2, RotateCcw, Server, Layers, AlertTriangle } from 'lucide-react';
+import {
+  StoragePolicyId,
+  ENTERPRISE_STORAGE_POLICIES,
+  calculateStorageCapacity
+} from '../../utils/storageCalculator';
 
 interface CloudPreset {
   name: string;
@@ -9,10 +14,7 @@ interface CloudPreset {
   nodeCores: number;
   nodeRamGB: number;
   rawStoragePerNodeTB: number;
-  usableStoragePerNodeTB: number;
-  nodeMonthlyCostUSD: number;
   externalStorageName: string;
-  externalStorageCostPerTB: number;
 }
 
 const CLOUD_PRESETS: Record<string, CloudPreset> = {
@@ -23,10 +25,7 @@ const CLOUD_PRESETS: Record<string, CloudPreset> = {
     nodeCores: 36,
     nodeRamGB: 576,
     rawStoragePerNodeTB: 15.4,
-    usableStoragePerNodeTB: 11.5,
-    nodeMonthlyCostUSD: 5200,
-    externalStorageName: 'Azure NetApp Files (ANF Standard/Premium)',
-    externalStorageCostPerTB: 180
+    externalStorageName: 'Azure NetApp Files (ANF Standard/Premium)'
   },
   'avs-av36': {
     name: 'Azure VMware Solution',
@@ -35,10 +34,7 @@ const CLOUD_PRESETS: Record<string, CloudPreset> = {
     nodeCores: 36,
     nodeRamGB: 576,
     rawStoragePerNodeTB: 15.4,
-    usableStoragePerNodeTB: 11.5,
-    nodeMonthlyCostUSD: 4800,
-    externalStorageName: 'Azure NetApp Files (ANF)',
-    externalStorageCostPerTB: 180
+    externalStorageName: 'Azure NetApp Files (ANF)'
   },
   'avs-av48': {
     name: 'Azure VMware Solution',
@@ -47,10 +43,7 @@ const CLOUD_PRESETS: Record<string, CloudPreset> = {
     nodeCores: 48,
     nodeRamGB: 768,
     rawStoragePerNodeTB: 23.0,
-    usableStoragePerNodeTB: 17.2,
-    nodeMonthlyCostUSD: 6500,
-    externalStorageName: 'Azure NetApp Files (ANF)',
-    externalStorageCostPerTB: 180
+    externalStorageName: 'Azure NetApp Files (ANF)'
   },
   'avs-av52': {
     name: 'Azure VMware Solution',
@@ -59,10 +52,7 @@ const CLOUD_PRESETS: Record<string, CloudPreset> = {
     nodeCores: 52,
     nodeRamGB: 1536,
     rawStoragePerNodeTB: 38.4,
-    usableStoragePerNodeTB: 28.8,
-    nodeMonthlyCostUSD: 8200,
-    externalStorageName: 'Azure NetApp Files (ANF)',
-    externalStorageCostPerTB: 180
+    externalStorageName: 'Azure NetApp Files (ANF)'
   },
   'avs-av64': {
     name: 'Azure VMware Solution',
@@ -71,10 +61,7 @@ const CLOUD_PRESETS: Record<string, CloudPreset> = {
     nodeCores: 64,
     nodeRamGB: 1024,
     rawStoragePerNodeTB: 30.7,
-    usableStoragePerNodeTB: 24.0,
-    nodeMonthlyCostUSD: 7800,
-    externalStorageName: 'Azure NetApp Files (ANF)',
-    externalStorageCostPerTB: 180
+    externalStorageName: 'Azure NetApp Files (ANF)'
   },
   'vmc-i4i': {
     name: 'VMware Cloud on AWS',
@@ -83,10 +70,7 @@ const CLOUD_PRESETS: Record<string, CloudPreset> = {
     nodeCores: 64,
     nodeRamGB: 1024,
     rawStoragePerNodeTB: 30.0,
-    usableStoragePerNodeTB: 20.5,
-    nodeMonthlyCostUSD: 7800,
-    externalStorageName: 'Amazon FSx for NetApp ONTAP (Multi-AZ)',
-    externalStorageCostPerTB: 195
+    externalStorageName: 'Amazon FSx for NetApp ONTAP (Multi-AZ)'
   },
   'vmc-i3en': {
     name: 'VMware Cloud on AWS',
@@ -95,10 +79,7 @@ const CLOUD_PRESETS: Record<string, CloudPreset> = {
     nodeCores: 48,
     nodeRamGB: 768,
     rawStoragePerNodeTB: 60.0,
-    usableStoragePerNodeTB: 45.0,
-    nodeMonthlyCostUSD: 9200,
-    externalStorageName: 'Amazon FSx for NetApp ONTAP',
-    externalStorageCostPerTB: 195
+    externalStorageName: 'Amazon FSx for NetApp ONTAP'
   },
   'vmc-m7i': {
     name: 'VMware Cloud on AWS',
@@ -107,10 +88,7 @@ const CLOUD_PRESETS: Record<string, CloudPreset> = {
     nodeCores: 96,
     nodeRamGB: 384,
     rawStoragePerNodeTB: 15.0,
-    usableStoragePerNodeTB: 10.5,
-    nodeMonthlyCostUSD: 6900,
-    externalStorageName: 'Amazon FSx for NetApp ONTAP',
-    externalStorageCostPerTB: 195
+    externalStorageName: 'Amazon FSx for NetApp ONTAP'
   },
   'gcve-ve1': {
     name: 'Google Cloud VMware Engine',
@@ -119,10 +97,7 @@ const CLOUD_PRESETS: Record<string, CloudPreset> = {
     nodeCores: 72,
     nodeRamGB: 768,
     rawStoragePerNodeTB: 19.2,
-    usableStoragePerNodeTB: 14.0,
-    nodeMonthlyCostUSD: 6400,
-    externalStorageName: 'Google Cloud NetApp Volumes (GCNV)',
-    externalStorageCostPerTB: 175
+    externalStorageName: 'Google Cloud NetApp Volumes (GCNV)'
   },
   'gcve-ve2': {
     name: 'Google Cloud VMware Engine',
@@ -131,10 +106,7 @@ const CLOUD_PRESETS: Record<string, CloudPreset> = {
     nodeCores: 128,
     nodeRamGB: 2048,
     rawStoragePerNodeTB: 51.2,
-    usableStoragePerNodeTB: 38.0,
-    nodeMonthlyCostUSD: 11500,
-    externalStorageName: 'Google Cloud NetApp Volumes (GCNV)',
-    externalStorageCostPerTB: 175
+    externalStorageName: 'Google Cloud NetApp Volumes (GCNV)'
   }
 };
 
@@ -145,13 +117,34 @@ export const NodeSizingToolPage: React.FC = () => {
   const [avgVcpu, setAvgVcpu] = useState<number>(4);
   const [avgRamGB, setAvgRamGB] = useState<number>(16);
   const [totalStorageTB, setTotalStorageTB] = useState<number>(180);
-  const [vCpuOvercommit, setVCpuOvercommit] = useState<number>(2.5);
-  const [ramBufferPercent, setRamBufferPercent] = useState<number>(20);
+
+  // Global Sizing Parameters
+  const [vCpuOvercommit, setVCpuOvercommit] = useState<number>(2.0); // 1:1, 2:1, 3:1, 4:1
+  const [ramBufferPercent, setRamBufferPercent] = useState<number>(15); // 10%, 15%, 20%
+  const [storagePolicyId, setStoragePolicyId] = useState<StoragePolicyId>('raid5_ftt1');
+  const [slackFactorPercent, setSlackFactorPercent] = useState<number>(25); // 25% default
+
+  // Storage Allocation Split (vSAN % vs External SAN %)
   const [enableDecoupledStorage, setEnableDecoupledStorage] = useState<boolean>(true);
-  const [decoupledOffloadPercent, setDecoupledOffloadPercent] = useState<number>(65);
+  const [vsanPercentage, setVsanPercentage] = useState<number>(35); // 35% vSAN, 65% External
 
   const preset = CLOUD_PRESETS[selectedCloudKey];
+  const selectedPolicy = ENTERPRISE_STORAGE_POLICIES[storagePolicyId];
 
+  // Storage Capacity Math
+  const effectiveVsanPercent = enableDecoupledStorage ? vsanPercentage : 100;
+  const storageAnalysis = useMemo(() => {
+    return calculateStorageCapacity({
+      totalUsedStorageTB: totalStorageTB,
+      totalProvisionedStorageTB: totalStorageTB * 1.3,
+      vsanPercentage: effectiveVsanPercent,
+      storagePolicyId,
+      slackFactorPercent,
+      nodeRawStorageTB: preset.rawStoragePerNodeTB
+    });
+  }, [totalStorageTB, effectiveVsanPercent, storagePolicyId, slackFactorPercent, preset.rawStoragePerNodeTB]);
+
+  // Compute and Node Calculations
   const calculations = useMemo(() => {
     const totalRequiredVcpu = vmCount * avgVcpu;
     const effectiveCoresNeeded = totalRequiredVcpu / vCpuOvercommit;
@@ -161,47 +154,47 @@ export const NodeSizingToolPage: React.FC = () => {
     const totalRamWithBuffer = totalRawRam * (1 + ramBufferPercent / 100);
     const memoryNodesNeeded = Math.ceil(totalRamWithBuffer / preset.nodeRamGB);
 
-    // Pure vSAN Nodes calculation
-    const vsanNodesNeeded = Math.ceil(totalStorageTB / preset.usableStoragePerNodeTB);
-    const nodesWithoutDecoupled = Math.max(3, computeNodesNeeded, memoryNodesNeeded, vsanNodesNeeded);
+    // Pure vSAN Sizing (if 100% of storage resided on local vSAN)
+    const pureStorage = calculateStorageCapacity({
+      totalUsedStorageTB: totalStorageTB,
+      totalProvisionedStorageTB: totalStorageTB * 1.3,
+      vsanPercentage: 100,
+      storagePolicyId,
+      slackFactorPercent,
+      nodeRawStorageTB: preset.rawStoragePerNodeTB
+    });
+    const vsanNodesNeededPure = pureStorage.vsanStorageNodesRequired;
+    const nodesWithoutDecoupled = Math.max(selectedPolicy.minHosts, computeNodesNeeded, memoryNodesNeeded, vsanNodesNeededPure);
 
     // With Decoupled External Storage
-    let nodesWithDecoupled = nodesWithoutDecoupled;
-    let externalStorageTB = 0;
-    if (enableDecoupledStorage) {
-      externalStorageTB = Math.round(totalStorageTB * (decoupledOffloadPercent / 100));
-      const remainingStorageTB = Math.max(0, totalStorageTB - externalStorageTB);
-      const reducedVsanNodes = Math.ceil(remainingStorageTB / preset.usableStoragePerNodeTB);
-      // Nodes still bounded by compute, memory, and minimum cluster size of 3 nodes
-      nodesWithDecoupled = Math.max(3, computeNodesNeeded, memoryNodesNeeded, reducedVsanNodes);
-    }
+    const vsanNodesNeededDecoupled = storageAnalysis.vsanStorageNodesRequired;
+    const nodesWithDecoupled = Math.max(selectedPolicy.minHosts, computeNodesNeeded, memoryNodesNeeded, vsanNodesNeededDecoupled);
 
     const nodeReduction = Math.max(0, nodesWithoutDecoupled - nodesWithDecoupled);
     const percentReduction = Math.round((nodeReduction / nodesWithoutDecoupled) * 100);
 
-    // Monthly cost estimates
-    const monthlyCostPure = nodesWithoutDecoupled * preset.nodeMonthlyCostUSD;
-    const monthlyCostDecoupled =
-      nodesWithDecoupled * preset.nodeMonthlyCostUSD +
-      (enableDecoupledStorage ? externalStorageTB * preset.externalStorageCostPerTB : 0);
-    const monthlySavings = Math.max(0, monthlyCostPure - monthlyCostDecoupled);
-    const annualSavings = monthlySavings * 12;
+    // Identify Limiting Resource
+    let limitingResource = 'Compute (vCPU Cores)';
+    if (memoryNodesNeeded >= computeNodesNeeded && memoryNodesNeeded >= vsanNodesNeededDecoupled) {
+      limitingResource = 'Memory (RAM Footprint)';
+    } else if (vsanNodesNeededDecoupled >= computeNodesNeeded && vsanNodesNeededDecoupled >= memoryNodesNeeded) {
+      limitingResource = 'Storage Capacity (vSAN Parity)';
+    }
 
     return {
       totalRequiredVcpu,
+      effectiveCoresNeeded: Math.ceil(effectiveCoresNeeded),
       totalRamGB: totalRawRam,
+      totalRamWithBuffer: Math.round(totalRamWithBuffer),
       computeNodesNeeded,
       memoryNodesNeeded,
-      vsanNodesNeeded,
+      vsanNodesNeededPure,
+      vsanNodesNeededDecoupled,
       nodesWithoutDecoupled,
       nodesWithDecoupled,
       nodeReduction,
       percentReduction,
-      externalStorageTB,
-      monthlyCostPure,
-      monthlyCostDecoupled,
-      monthlySavings,
-      annualSavings
+      limitingResource
     };
   }, [
     vmCount,
@@ -210,13 +203,12 @@ export const NodeSizingToolPage: React.FC = () => {
     totalStorageTB,
     vCpuOvercommit,
     ramBufferPercent,
-    enableDecoupledStorage,
-    decoupledOffloadPercent,
-    preset
+    preset,
+    selectedPolicy,
+    storageAnalysis
   ]);
 
   const handleExportToGenerator = () => {
-    // Store in localStorage or navigate with state
     try {
       localStorage.setItem('zaboraa_sizing_export', JSON.stringify({
         cloud: selectedCloudKey,
@@ -224,7 +216,8 @@ export const NodeSizingToolPage: React.FC = () => {
         vms: vmCount,
         storageTB: totalStorageTB,
         nodes: calculations.nodesWithDecoupled,
-        decoupledStorageTB: calculations.externalStorageTB,
+        decoupledStorageTB: storageAnalysis.externalUsedStorageTB,
+        storagePolicy: selectedPolicy.name,
         timestamp: new Date().toISOString()
       }));
     } catch {}
@@ -242,11 +235,17 @@ export const NodeSizingToolPage: React.FC = () => {
         </div>
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
+            <div className="flex items-center gap-2 mb-1">
+              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold uppercase tracking-wider bg-cyan-500/10 text-cyan-400 border border-cyan-500/30">
+                Zero-Cost Technical Architecture
+              </span>
+              <span className="text-xs text-slate-400">Enterprise Hyperscaler Sizing Engine</span>
+            </div>
             <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-white">
-              Multi-Cloud Node & Storage Sizing Estimator
+              Multi-Cloud Node & Usable Storage Policy Estimator
             </h1>
             <p className="text-sm text-slate-300 mt-1 max-w-3xl">
-              Model bare-metal node requirements and prevent storage-driven cluster sprawl by decoupling heavy capacity to enterprise NFS tiers (Azure NetApp Files, Amazon FSx ONTAP, Google Cloud NetApp Volumes).
+              Compute true bare-metal host density across AVS, AWS VMC, and GCVE. Size net usable capacity with enterprise RAID/FTT policies, 25% slack factor, and decoupled external NFS datastores.
             </p>
           </div>
           <button
@@ -297,7 +296,7 @@ export const NodeSizingToolPage: React.FC = () => {
                 }`}
               >
                 <div>{CLOUD_PRESETS[k].nodeModel}</div>
-                <div className="text-[9px] text-slate-500 mt-0.5">{CLOUD_PRESETS[k].nodeCores} Cores · {CLOUD_PRESETS[k].nodeRamGB} GiB · {CLOUD_PRESETS[k].usableStoragePerNodeTB} TiB</div>
+                <div className="text-[9px] text-slate-500 mt-0.5">{CLOUD_PRESETS[k].nodeCores} Cores · {CLOUD_PRESETS[k].nodeRamGB} GiB RAM · {CLOUD_PRESETS[k].rawStoragePerNodeTB} TiB Raw</div>
               </button>
             ))}
           </div>
@@ -318,7 +317,7 @@ export const NodeSizingToolPage: React.FC = () => {
                 }`}
               >
                 <div>{CLOUD_PRESETS[k].nodeModel}</div>
-                <div className="text-[9px] text-slate-500 mt-0.5">{CLOUD_PRESETS[k].nodeCores} Cores · {CLOUD_PRESETS[k].nodeRamGB} GiB · {CLOUD_PRESETS[k].usableStoragePerNodeTB} TiB</div>
+                <div className="text-[9px] text-slate-500 mt-0.5">{CLOUD_PRESETS[k].nodeCores} Cores · {CLOUD_PRESETS[k].nodeRamGB} GiB RAM · {CLOUD_PRESETS[k].rawStoragePerNodeTB} TiB Raw</div>
               </button>
             ))}
           </div>
@@ -341,10 +340,12 @@ export const NodeSizingToolPage: React.FC = () => {
                   setAvgVcpu(4);
                   setAvgRamGB(16);
                   setTotalStorageTB(180);
-                  setVCpuOvercommit(2.5);
-                  setRamBufferPercent(20);
+                  setVCpuOvercommit(2.0);
+                  setRamBufferPercent(15);
+                  setStoragePolicyId('raid5_ftt1');
+                  setSlackFactorPercent(25);
                   setEnableDecoupledStorage(true);
-                  setDecoupledOffloadPercent(65);
+                  setVsanPercentage(35);
                 }}
                 className="text-xs text-slate-400 hover:text-cyan-400 flex items-center gap-1 cursor-pointer"
               >
@@ -414,7 +415,7 @@ export const NodeSizingToolPage: React.FC = () => {
             {/* Slider 3: Total Storage Footprint */}
             <div className="space-y-2">
               <div className="flex justify-between text-xs">
-                <span className="font-semibold text-slate-300">Aggregate Provisioned Storage Footprint</span>
+                <span className="font-semibold text-slate-300">Aggregate Workload Data Footprint</span>
                 <span className="font-mono text-cyan-300 font-bold">{totalStorageTB} TB</span>
               </div>
               <input
@@ -434,48 +435,107 @@ export const NodeSizingToolPage: React.FC = () => {
               </div>
             </div>
 
-            {/* Advanced Overcommit & Buffer Settings */}
+            {/* vCPU Overcommit & RAM Buffer Dropdowns */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-slate-800">
               <div className="space-y-1.5">
-                <label className="text-xs text-slate-400">vCPU Overcommit Ratio</label>
+                <label className="text-xs font-semibold text-slate-300 flex items-center justify-between">
+                  <span>vCPU Overcommit Ratio</span>
+                  <span className="text-cyan-400 font-mono font-bold">{vCpuOvercommit}:1</span>
+                </label>
                 <select
                   value={vCpuOvercommit}
                   onChange={e => setVCpuOvercommit(Number(e.target.value))}
                   className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-md text-xs font-mono text-slate-200 cursor-pointer"
                 >
-                  <option value={1.5}>1.5:1 (Ultra-conservative)</option>
-                  <option value={2.0}>2.0:1 (Balanced Enterprise)</option>
-                  <option value={2.5}>2.5:1 (Recommended Standard)</option>
-                  <option value={3.0}>3.0:1 (High Density)</option>
-                  <option value={4.0}>4.0:1 (VDI / Dev clusters)</option>
+                  <option value={1.0}>1:1 Ratio (Dedicated 1:1 Cores - Tier 0 DBs)</option>
+                  <option value={2.0}>2:1 Ratio (Balanced Enterprise Production)</option>
+                  <option value={3.0}>3:1 Ratio (Standard Production & Middleware)</option>
+                  <option value={4.0}>4:1 Ratio (Aggressive Non-Prod & Dev Density)</option>
                 </select>
+                <span className="text-[10px] text-slate-500 block">
+                  {calculations.totalRequiredVcpu} vCPUs requires {calculations.effectiveCoresNeeded} physical cores
+                </span>
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-xs text-slate-400">RAM N+1 HA & Buffer %</label>
+                <label className="text-xs font-semibold text-slate-300 flex items-center justify-between">
+                  <span>RAM Overhead Buffer</span>
+                  <span className="text-indigo-400 font-mono font-bold">+{ramBufferPercent}%</span>
+                </label>
                 <select
                   value={ramBufferPercent}
                   onChange={e => setRamBufferPercent(Number(e.target.value))}
                   className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-md text-xs font-mono text-slate-200 cursor-pointer"
                 >
-                  <option value={15}>15% (Tight)</option>
-                  <option value={20}>20% (Standard N+1)</option>
-                  <option value={25}>25% (High Availability N+2)</option>
-                  <option value={30}>30% (Future Growth headroom)</option>
+                  <option value={10}>10% Buffer (Hypervisor Baseline)</option>
+                  <option value={15}>15% Buffer (Standard N+1 HA & NSX-T)</option>
+                  <option value={20}>20% Buffer (High-Resilience N+2 Buffer)</option>
                 </select>
+                <span className="text-[10px] text-slate-500 block">
+                  {calculations.totalRamGB} GiB allocated expands to {calculations.totalRamWithBuffer} GiB
+                </span>
               </div>
             </div>
 
-            {/* Decoupled Storage Switcher Box */}
-            <div className="p-4 rounded-xl bg-cyan-950/30 border border-cyan-500/30 space-y-4">
+            {/* Storage Policy Dropdown & Slack Factor Selector */}
+            <div className="p-4 rounded-xl bg-slate-950/70 border border-slate-800 space-y-4">
+              <div className="flex items-center justify-between border-b border-slate-800/80 pb-2">
+                <div className="text-xs font-bold text-white flex items-center gap-1.5">
+                  <Layers className="w-4 h-4 text-cyan-400" />
+                  <span>Enterprise Storage Policy & Parity Multiplier</span>
+                </div>
+                <span className="text-[10px] font-mono text-cyan-400">
+                  Overhead Factor: {selectedPolicy.overheadMultiplier.toFixed(2)}x
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {/* Storage Policy Selector */}
+                <div className="space-y-1.5">
+                  <label className="text-xs text-slate-300">Storage Policy (RAID/FTT)</label>
+                  <select
+                    value={storagePolicyId}
+                    onChange={e => setStoragePolicyId(e.target.value as StoragePolicyId)}
+                    className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-md text-xs font-mono text-white cursor-pointer"
+                  >
+                    <option value="raid1_ftt1">RAID 1, FTT 1 (2.0x raw capacity factor)</option>
+                    <option value="raid5_ftt1">RAID 5, FTT 1 (~1.33x efficiency factor)</option>
+                    <option value="raid6_ftt2">RAID 6, FTT 2 (~1.50x dual-parity factor)</option>
+                  </select>
+                  <span className="text-[10px] text-slate-400 block">
+                    {selectedPolicy.description} (Min {selectedPolicy.minHosts} hosts).
+                  </span>
+                </div>
+
+                {/* Slack Factor */}
+                <div className="space-y-1.5">
+                  <label className="text-xs text-slate-300">vSAN Operational Slack Factor</label>
+                  <select
+                    value={slackFactorPercent}
+                    onChange={e => setSlackFactorPercent(Number(e.target.value))}
+                    className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-md text-xs font-mono text-white cursor-pointer"
+                  >
+                    <option value={20}>20% Slack (Minimum VMware Baseline)</option>
+                    <option value={25}>25% Slack (Enterprise Standard Recommended)</option>
+                    <option value={30}>30% Slack (High Snapshot / Resync Headroom)</option>
+                  </select>
+                  <span className="text-[10px] text-slate-400 block">
+                    Reserves {slackFactorPercent}% raw headroom for maintenance mode evacuations and snapshot merges.
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Storage Allocation Split (vSAN % vs External SAN %) */}
+            <div className="p-4 rounded-xl bg-cyan-950/20 border border-cyan-500/30 space-y-4">
               <div className="flex items-center justify-between">
                 <div>
                   <div className="text-xs font-bold text-white flex items-center gap-2">
                     <HardDrive className="w-4 h-4 text-cyan-400" />
-                    <span>Decouple External Storage ({preset.externalStorageName})</span>
+                    <span>Storage Tier Allocation Split</span>
                   </div>
                   <div className="text-[11px] text-slate-400 mt-0.5">
-                    Offload large VM disks to cloud-native NFS datastores to avoid adding idle CPU/RAM nodes.
+                    Distribute total used storage between high-performance local vSAN and External NFS ({preset.externalStorageName}).
                   </div>
                 </div>
                 <button
@@ -492,44 +552,56 @@ export const NodeSizingToolPage: React.FC = () => {
                 </button>
               </div>
 
-              {enableDecoupledStorage && (
-                <div className="space-y-2 pt-2 border-t border-cyan-500/20">
-                  <div className="flex justify-between text-xs">
-                    <span className="text-slate-300">Capacity Offloaded to NFS Datastore</span>
-                    <span className="font-mono text-cyan-300 font-bold">{decoupledOffloadPercent}% ({calculations.externalStorageTB} TB)</span>
+              {enableDecoupledStorage ? (
+                <div className="space-y-3 pt-2 border-t border-cyan-500/20">
+                  <div className="flex justify-between text-xs font-mono">
+                    <span className="text-cyan-300">Local vSAN: {vsanPercentage}% ({storageAnalysis.vsanUsedDataTB} TB)</span>
+                    <span className="text-emerald-300">External SAN: {100 - vsanPercentage}% ({storageAnalysis.externalUsedStorageTB} TB)</span>
                   </div>
                   <input
                     type="range"
-                    min="20"
+                    min="10"
                     max="90"
                     step="5"
-                    value={decoupledOffloadPercent}
-                    onChange={e => setDecoupledOffloadPercent(Number(e.target.value))}
-                    className="w-full accent-cyan-400 bg-slate-800 h-1.5 rounded cursor-pointer"
+                    value={vsanPercentage}
+                    onChange={e => setVsanPercentage(Number(e.target.value))}
+                    className="w-full accent-cyan-400 bg-slate-800 h-2 rounded cursor-pointer"
                   />
+                  <div className="flex justify-between text-[10px] text-slate-400 font-mono">
+                    <span>10% vSAN (Maximum NFS Offload)</span>
+                    <span>50% Balanced</span>
+                    <span>90% vSAN Heavy</span>
+                  </div>
+                </div>
+              ) : (
+                <div className="text-xs text-slate-400 pt-2 border-t border-slate-800">
+                  Decoupled storage disabled. 100% of workload data ({totalStorageTB} TB) is mapped to local cluster vSAN.
                 </div>
               )}
             </div>
           </div>
         </div>
 
-        {/* Right Sizing Results & Savings (5 Cols) */}
+        {/* Right Sizing Results & Technical Metrics (5 Cols) */}
         <div className="lg:col-span-5 space-y-6">
           {/* Node Reduction Outcome Card */}
           <div className="p-6 rounded-xl bg-slate-900 border border-slate-800 shadow-xl space-y-6">
             <div className="space-y-1">
               <div className="text-xs font-mono text-cyan-400 uppercase tracking-wider font-semibold">
-                Sizing Outcome & Cluster Footprint
+                Sizing Outcome & Host Footprint
               </div>
-              <h3 className="text-xl font-bold text-white">
-                Cluster Nodes Required
+              <h3 className="text-xl font-bold text-white flex items-center justify-between">
+                <span>Cluster Hosts Required</span>
+                <span className="text-xs px-2.5 py-0.5 rounded-full bg-emerald-950 text-emerald-300 border border-emerald-700/60 font-mono">
+                  N+1 HA Resilient
+                </span>
               </h3>
             </div>
 
             {/* Comparison Columns */}
             <div className="grid grid-cols-2 gap-4">
               <div className="p-4 rounded-lg bg-slate-950 border border-slate-800 text-center space-y-1">
-                <div className="text-[11px] text-slate-400 font-mono">Traditional vSAN Only</div>
+                <div className="text-[11px] text-slate-400 font-mono">Traditional Pure vSAN</div>
                 <div className="text-3xl font-black text-rose-400 font-mono">
                   {calculations.nodesWithoutDecoupled}
                 </div>
@@ -547,42 +619,58 @@ export const NodeSizingToolPage: React.FC = () => {
               </div>
             </div>
 
+            {/* Limiting Resource Badge */}
+            <div className="p-3 rounded-lg bg-slate-950 border border-slate-800 flex items-center justify-between text-xs">
+              <span className="text-slate-400">Limiting Constraint:</span>
+              <span className="font-bold text-amber-300 font-mono">{calculations.limitingResource}</span>
+            </div>
+
             {/* Constraints Breakdown */}
             <div className="space-y-2 text-xs font-mono pt-2 border-t border-slate-800">
-              <div className="text-slate-400 font-sans font-semibold">Bounding Dimension Analysis:</div>
+              <div className="text-slate-400 font-sans font-semibold">Host Requirements by Dimension:</div>
               <div className="flex justify-between py-1 border-b border-slate-800/60 text-slate-300">
-                <span>Compute Bound (vCPU):</span>
-                <span>{calculations.computeNodesNeeded} nodes</span>
+                <span>Compute Bound (vCPU Cores):</span>
+                <span>{calculations.computeNodesNeeded} hosts</span>
               </div>
               <div className="flex justify-between py-1 border-b border-slate-800/60 text-slate-300">
-                <span>Memory Bound (RAM):</span>
-                <span>{calculations.memoryNodesNeeded} nodes</span>
+                <span>Memory Bound (RAM Buffered):</span>
+                <span>{calculations.memoryNodesNeeded} hosts</span>
               </div>
               <div className="flex justify-between py-1 border-b border-slate-800/60 text-slate-300">
-                <span>Raw Storage Bound (vSAN):</span>
-                <span className="text-rose-400 font-bold">{calculations.vsanNodesNeeded} nodes</span>
+                <span>Pure vSAN Storage (No NFS):</span>
+                <span className="text-rose-400 font-bold">{calculations.vsanNodesNeededPure} hosts</span>
+              </div>
+              <div className="flex justify-between py-1 border-b border-slate-800/60 text-slate-300">
+                <span>Decoupled vSAN Storage (Remaining):</span>
+                <span className="text-cyan-300 font-bold">{calculations.vsanNodesNeededDecoupled} hosts</span>
               </div>
             </div>
 
-            {/* Financial Savings Estimate */}
-            <div className="p-4 rounded-lg bg-emerald-950/40 border border-emerald-500/40 space-y-3">
-              <div className="flex items-center gap-2 text-emerald-400 text-xs font-bold">
-                <Zap className="w-4 h-4" />
-                <span>Estimated TCO Savings</span>
+            {/* Usable Storage & Parity Breakdown Panel */}
+            <div className="p-4 rounded-lg bg-slate-950 border border-slate-800 space-y-2.5 text-xs font-mono">
+              <div className="text-slate-300 font-semibold font-sans flex items-center justify-between">
+                <span>Net Usable Capacity & Parity Breakdown</span>
+                <span className="text-[10px] text-cyan-400">{selectedPolicy.shortLabel}</span>
               </div>
-              <div className="grid grid-cols-2 gap-2 text-center">
-                <div>
-                  <div className="text-[10px] text-slate-400">Monthly Run-Rate Savings</div>
-                  <div className="text-lg font-bold text-emerald-300 font-mono">
-                    ${calculations.monthlySavings.toLocaleString()}
-                  </div>
-                </div>
-                <div>
-                  <div className="text-[10px] text-slate-400">Projected Annual Savings</div>
-                  <div className="text-lg font-bold text-emerald-300 font-mono">
-                    ${calculations.annualSavings.toLocaleString()}
-                  </div>
-                </div>
+              <div className="flex justify-between text-slate-400">
+                <span>Local vSAN Usable Data:</span>
+                <span className="text-white font-bold">{storageAnalysis.vsanUsedDataTB} TB</span>
+              </div>
+              <div className="flex justify-between text-slate-400">
+                <span>vSAN RAID Parity Overhead:</span>
+                <span className="text-amber-400 font-bold">+{storageAnalysis.vsanPolicyOverheadTB} TB</span>
+              </div>
+              <div className="flex justify-between text-slate-400">
+                <span>vSAN Operational Slack ({slackFactorPercent}%):</span>
+                <span className="text-indigo-400 font-bold">+{storageAnalysis.vsanSlackTB} TB</span>
+              </div>
+              <div className="flex justify-between text-slate-400 border-t border-slate-800 pt-1.5">
+                <span>Raw vSAN Capacity Required:</span>
+                <span className="text-cyan-300 font-bold">{storageAnalysis.vsanRawRequiredTB} TB</span>
+              </div>
+              <div className="flex justify-between text-slate-400">
+                <span>External SAN Capacity Provisioned:</span>
+                <span className="text-emerald-300 font-bold">{storageAnalysis.externalProvisionedTB} TB</span>
               </div>
             </div>
 
