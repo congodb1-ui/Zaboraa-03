@@ -1,9 +1,11 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 import { useCustomization } from '../context/CustomizationContext';
-import { ShieldCheck, Phone, Mail, ArrowUp } from 'lucide-react';
+import { ShieldCheck, Phone, Mail, ArrowUp, FolderGit2, ExternalLink } from 'lucide-react';
+import { GOOGLE_DRIVE_CONFIG } from '../data/mediaAssets';
 
 export const Footer: React.FC = () => {
-  const { siteConfig, setIsBriefingModalOpen, setIsCustomizerOpen, setIsAdminLoginModalOpen } = useCustomization();
+  const { siteConfig, setIsBriefingModalOpen, setIsCustomizerOpen, setIsAdminLoginModalOpen, isAdmin } = useCustomization();
   const { founder } = siteConfig;
 
   const scrollToTop = () => {
@@ -16,14 +18,14 @@ export const Footer: React.FC = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-8 lg:gap-12">
           {/* Col 1: Brand & Bio */}
           <div className="lg:col-span-2 space-y-4">
-            <div className="flex items-center gap-2">
+            <Link to="/" className="flex items-center gap-2">
               <div className="w-7 h-7 rounded bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center font-bold text-white text-xs">
                 Z
               </div>
               <span className="text-base font-bold text-white tracking-tight">
                 {siteConfig.brand}
               </span>
-            </div>
+            </Link>
             <p className="text-slate-400 leading-relaxed max-w-sm">
               {siteConfig.brandTagline}. Architecting high-consequence hybrid cloud evacuations and sovereign VMware environments across Azure AVS, AWS VMC, and Google Cloud GCVE.
             </p>
@@ -33,145 +35,150 @@ export const Footer: React.FC = () => {
                 <span className="font-semibold">NDA Protected Engagement</span>
               </div>
             </div>
+
+            {/* Google Drive Workspace Badge */}
+            <div className="pt-2">
+              <a
+                href={GOOGLE_DRIVE_CONFIG.folderUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-900 border border-cyan-500/30 text-cyan-300 text-xs hover:border-cyan-400 transition-colors"
+              >
+                <FolderGit2 className="w-3.5 h-3.5 text-cyan-400" />
+                <span>Google Drive Cloud Workspace</span>
+                <ExternalLink className="w-3 h-3 text-slate-500" />
+              </a>
+            </div>
           </div>
 
-          {/* Col 2: Dedicated Cloud Platforms */}
+          {/* Col 2: Engineering Workbench Tools */}
           <div className="space-y-3">
             <div className="text-white font-semibold uppercase tracking-wider text-[11px]">
-              Dedicated Architectures
+              Engineering Tools
             </div>
             <ul className="space-y-2">
               <li>
-                <a href="#topology-viewer" className="hover:text-cyan-400 transition-colors font-semibold text-cyan-300">
-                  ⚡ Multi-Layer Topology Viewer
-                </a>
+                <Link to="/tools" className="hover:text-cyan-400 transition-colors font-semibold text-cyan-300">
+                  Workbench Overview
+                </Link>
               </li>
               <li>
-                <a href="#section-avs" className="hover:text-cyan-400 transition-colors">
-                  Azure VMware Solution (AVS)
-                </a>
+                <Link to="/tools/sizing" className="hover:text-cyan-400 transition-colors">
+                  Node & Storage Sizing
+                </Link>
               </li>
               <li>
-                <a href="#section-gcve" className="hover:text-blue-400 transition-colors">
-                  Google Cloud VMware Engine (GCVE)
-                </a>
+                <Link to="/tools/rvtools-analyzer" className="hover:text-cyan-400 transition-colors">
+                  RVTools Migration Readiness
+                </Link>
               </li>
               <li>
-                <a href="#section-vmc-dr" className="hover:text-amber-400 transition-colors">
-                  VMC on AWS Migration & DR
-                </a>
+                <Link to="/tools/dr-planner" className="hover:text-cyan-400 transition-colors">
+                  DR RPO/RTO & WAN Sizing
+                </Link>
               </li>
               <li>
-                <a href="#section-nsx" className="hover:text-emerald-400 transition-colors">
-                  NSX-T Network & Zero-Trust DFW
-                </a>
+                <Link to="/tools/design-generator" className="hover:text-cyan-400 transition-colors">
+                  Hybrid Blueprint Generator
+                </Link>
               </li>
               <li>
-                <a href="#section-hcx" className="hover:text-teal-400 transition-colors font-medium text-teal-300">
-                  VMware HCX Workload Mobility & MON
-                </a>
-              </li>
-              <li>
-                <a href="#section-srm" className="hover:text-rose-400 transition-colors font-medium text-rose-300">
-                  VMware Site Recovery Manager (SRM)
-                </a>
+                <Link to="/blueprints" className="hover:text-cyan-400 transition-colors">
+                  Interactive Blueprints
+                </Link>
               </li>
             </ul>
           </div>
 
-          {/* Col 3: Resources & Blueprints */}
+          {/* Col 3: Dedicated Platforms */}
           <div className="space-y-3">
             <div className="text-white font-semibold uppercase tracking-wider text-[11px]">
-              Knowledge Hub
+              Architectural Disciplines
             </div>
             <ul className="space-y-2">
-              <li>
-                <a href="#featured-video" className="hover:text-cyan-400 transition-colors">
-                  Featured Masterclass Video
-                </a>
-              </li>
-              <li>
-                <a href="#tutorials" className="hover:text-cyan-400 transition-colors">
-                  Software Tutorials & Guides
-                </a>
-              </li>
-              <li>
-                <a href="#videos" className="hover:text-cyan-400 transition-colors">
-                  Video Masterclasses Archive
-                </a>
-              </li>
-              <li>
-                <a href="#case-studies" className="hover:text-cyan-400 transition-colors">
-                  Enterprise Case Studies
-                </a>
-              </li>
-              <li>
-                <button
-                  onClick={() => setIsCustomizerOpen(true)}
-                  className="text-cyan-400 hover:text-cyan-300 font-medium"
-                >
-                  Customizer Studio
-                </button>
-              </li>
+              {(siteConfig.platformShowcases || []).slice(0, 6).map(p => (
+                <li key={p.id}>
+                  <Link to={`/disciplines/${p.id}`} className="hover:text-cyan-400 transition-colors">
+                    {p.title}
+                  </Link>
+                </li>
+              ))}
             </ul>
           </div>
 
-          {/* Col 4: Executive Contact */}
+          {/* Col 4: Principal Architect & Contact */}
           <div className="space-y-3">
             <div className="text-white font-semibold uppercase tracking-wider text-[11px]">
-              Direct Architect Desk
+              Principal Architect Desk
             </div>
-            <div className="space-y-2 text-slate-300">
-              <div className="font-semibold text-white">{founder.name}</div>
-              <div className="text-slate-400">{founder.role}</div>
-              <div className="pt-1">
-                <a
-                  href={`tel:${founder.phone.replace(/\s+/g, '')}`}
-                  className="flex items-center gap-1.5 text-cyan-400 hover:underline"
-                >
-                  <Phone className="w-3.5 h-3.5 shrink-0" />
-                  <span>{founder.phone}</span>
-                </a>
-              </div>
-              <div>
+            <div className="space-y-2">
+              <div className="font-semibold text-slate-200">{founder.name}</div>
+              <div className="text-[11px] text-cyan-300">{founder.role}</div>
+              <div className="text-[11px] text-slate-400">{founder.location}</div>
+              <div className="pt-2 space-y-1.5">
                 <a
                   href={`mailto:${founder.email}`}
-                  className="flex items-center gap-1.5 text-slate-300 hover:text-cyan-400 transition-colors"
+                  className="flex items-center gap-1.5 hover:text-cyan-400 transition-colors text-slate-300"
                 >
-                  <Mail className="w-3.5 h-3.5 shrink-0" />
+                  <Mail className="w-3.5 h-3.5 text-cyan-400" />
                   <span>{founder.email}</span>
+                </a>
+                <a
+                  href={`tel:${founder.phone}`}
+                  className="flex items-center gap-1.5 hover:text-cyan-400 transition-colors text-slate-300"
+                >
+                  <Phone className="w-3.5 h-3.5 text-cyan-400" />
+                  <span>{founder.phone}</span>
                 </a>
               </div>
               <div className="pt-2">
                 <button
                   onClick={() => setIsBriefingModalOpen(true)}
-                  className="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-cyan-300 border border-slate-700 rounded-md text-xs font-semibold"
+                  className="px-3 py-1.5 rounded bg-cyan-400 hover:bg-cyan-300 text-slate-950 font-bold text-xs transition-colors cursor-pointer"
                 >
-                  Schedule Advisory Call
+                  Schedule Technical Call
                 </button>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Bottom Sub-bar */}
-        <div className="mt-12 pt-8 border-t border-slate-800/80 flex flex-col sm:flex-row items-center justify-between gap-4 text-slate-500">
+        {/* Bottom Bar */}
+        <div className="mt-12 pt-8 border-t border-slate-900 flex flex-col sm:flex-row items-center justify-between gap-4 text-[11px]">
           <div>
-            © {new Date().getFullYear()} {siteConfig.brand}. All rights reserved. VMware, NSX, vSphere, and HCX are registered trademarks of Broadcom.
+            &copy; {new Date().getFullYear()} {siteConfig.brand}. All rights reserved. Enterprise VMware Cloud Architecture & Hyperscaler Migration Engineering.
           </div>
           <div className="flex items-center gap-4">
-            <button
-              onClick={() => setIsAdminLoginModalOpen(true)}
-              className="text-slate-500 hover:text-cyan-400 transition-colors text-xs flex items-center gap-1 cursor-pointer"
-              title="Architect Administrator Access Portal"
-            >
-              <span>Architect Portal</span>
-            </button>
+            <Link to="/about" className="hover:text-white transition-colors">
+              About
+            </Link>
+            <Link to="/resources" className="hover:text-white transition-colors">
+              Knowledge Hub
+            </Link>
+            <Link to="/case-studies" className="hover:text-white transition-colors">
+              Case Studies
+            </Link>
+            {isAdmin ? (
+              <button
+                onClick={() => setIsCustomizerOpen(true)}
+                className="hover:text-emerald-400 transition-colors font-mono cursor-pointer"
+              >
+                [Admin Customizer]
+              </button>
+            ) : (
+              <button
+                onClick={() => setIsAdminLoginModalOpen(true)}
+                className="hover:text-slate-300 transition-colors text-slate-600 cursor-pointer"
+              >
+                Admin
+              </button>
+            )}
             <button
               onClick={scrollToTop}
-              className="flex items-center gap-1 text-slate-400 hover:text-white transition-colors cursor-pointer"
+              className="flex items-center gap-1 text-slate-400 hover:text-white transition-colors cursor-pointer ml-2"
+              title="Back to top"
             >
-              <span>Back to top</span>
+              <span>Top</span>
               <ArrowUp className="w-3.5 h-3.5" />
             </button>
           </div>

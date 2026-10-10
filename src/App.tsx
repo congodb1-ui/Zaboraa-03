@@ -1,17 +1,8 @@
-import React from 'react';
+import React, { useEffect } from 'react';
+import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
 import { CustomizationProvider, useCustomization } from './context/CustomizationContext';
-import { FloatingProgressNav } from './components/FloatingProgressNav';
 import { Navbar } from './components/Navbar';
-import { Hero } from './components/Hero';
-import { MultiLayerTopologyViewer } from './components/MultiLayerTopologyViewer';
-import { MigrationStrategyRoadmap } from './components/MigrationStrategyRoadmap';
-import { DedicatedPlatformsShowcase } from './components/DedicatedPlatformsShowcase';
-import { AriaNetworkDeepDiveSection } from './components/AriaNetworkDeepDiveSection';
-import { FeaturedVideoSection } from './components/FeaturedVideoSection';
-import { KnowledgeBaseSection } from './components/KnowledgeBaseSection';
-import { TutorialsAndArticles } from './components/TutorialsAndArticles';
-import { VideoHub } from './components/VideoHub';
-import { CaseStudiesSection } from './components/CaseStudiesSection';
+import { Footer } from './components/Footer';
 import { CustomizerDrawer } from './components/CustomizerDrawer';
 import { PhotoEditorModal } from './components/PhotoEditorModal';
 import { PlatformEditorModal } from './components/PlatformEditorModal';
@@ -19,8 +10,42 @@ import { ScheduleBriefingModal } from './components/ScheduleBriefingModal';
 import { SearchCommandModal } from './components/SearchCommandModal';
 import { AdminLoginModal } from './components/AdminLoginModal';
 import { WatermarkSettingsModal } from './components/WatermarkSettingsModal';
-import { Footer } from './components/Footer';
-import { Sliders, Calendar, Sun, Moon, ShieldCheck, Unlock, LogOut, Eye, EyeOff } from 'lucide-react';
+
+// Pages
+import { HomePage } from './pages/HomePage';
+import { DisciplineDetailPage } from './pages/DisciplineDetailPage';
+import { WorkbenchHubPage } from './pages/tools/WorkbenchHubPage';
+import { NodeSizingToolPage } from './pages/tools/NodeSizingToolPage';
+import { RVToolsAnalyzerPage } from './pages/tools/RVToolsAnalyzerPage';
+import { DRPlannerPage } from './pages/tools/DRPlannerPage';
+import { DesignGeneratorPage } from './pages/tools/DesignGeneratorPage';
+import { BlueprintsPage } from './pages/BlueprintsPage';
+import { RoadmapPage } from './pages/RoadmapPage';
+import { ResourcesPage } from './pages/ResourcesPage';
+import { CaseStudiesPage } from './pages/CaseStudiesPage';
+import { AboutPage } from './pages/AboutPage';
+
+import {
+  Sliders,
+  Calendar,
+  Sun,
+  Moon,
+  ShieldCheck,
+  LogOut,
+  Eye,
+  EyeOff,
+  FolderGit2
+} from 'lucide-react';
+import { GOOGLE_DRIVE_CONFIG } from './data/mediaAssets';
+
+// Scroll to top automatically on route changes
+const ScrollToTop: React.FC = () => {
+  const { pathname } = useLocation();
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [pathname]);
+  return null;
+};
 
 const MainLayout: React.FC = () => {
   const {
@@ -30,7 +55,6 @@ const MainLayout: React.FC = () => {
     isAdmin,
     setIsAdmin,
     setIsCustomizerOpen,
-    setIsAdminLoginModalOpen,
     setIsWatermarkModalOpen,
     setIsBriefingModalOpen,
     updateEnableHotspots
@@ -48,7 +72,7 @@ const MainLayout: React.FC = () => {
           <div className="flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
             <span className="font-bold tracking-wide">ADMIN MODE: Wasim Sayyed</span>
-            <span className="hidden md:inline text-emerald-300/80">· Full Editing Rights & Diagram Control Active</span>
+            <span className="hidden md:inline text-emerald-300/80">· Multi-Page Architecture Active</span>
           </div>
           <div className="flex items-center gap-2">
             <button
@@ -103,24 +127,40 @@ const MainLayout: React.FC = () => {
         </div>
       )}
 
-      {/* Floating Progress Indicator & Breadcrumb Navigation */}
-      <FloatingProgressNav />
-
+      {/* Main Top Navigation */}
       <Navbar />
 
+      {/* Viewport Routes */}
       <main className="flex-1">
-        <Hero />
-        <MultiLayerTopologyViewer />
-        <MigrationStrategyRoadmap />
-        <DedicatedPlatformsShowcase />
-        <AriaNetworkDeepDiveSection />
-        <FeaturedVideoSection />
-        <KnowledgeBaseSection />
-        <TutorialsAndArticles />
-        <VideoHub />
-        <CaseStudiesSection />
+        <ScrollToTop />
+        <Routes>
+          {/* 1. Home Page Overview */}
+          <Route path="/" element={<HomePage />} />
+
+          {/* 2. Dynamic Standalone Discipline Page for EVERY item in platformShowcases */}
+          <Route path="/disciplines/:id" element={<DisciplineDetailPage />} />
+
+          {/* 3. Interactive Engineering Workbench Suite */}
+          <Route path="/tools" element={<WorkbenchHubPage />} />
+          <Route path="/tools/sizing" element={<NodeSizingToolPage />} />
+          <Route path="/tools/rvtools-analyzer" element={<RVToolsAnalyzerPage />} />
+          <Route path="/tools/dr-planner" element={<DRPlannerPage />} />
+          <Route path="/tools/design-generator" element={<DesignGeneratorPage />} />
+
+          {/* 4. Standalone Dedicated Blueprint, Roadmap, Resources, Case Studies, About */}
+          <Route path="/blueprints" element={<BlueprintsPage />} />
+          <Route path="/roadmap" element={<RoadmapPage />} />
+          <Route path="/resources" element={<ResourcesPage />} />
+          <Route path="/resources/:tab" element={<ResourcesPage />} />
+          <Route path="/case-studies" element={<CaseStudiesPage />} />
+          <Route path="/about" element={<AboutPage />} />
+
+          {/* Fallback */}
+          <Route path="*" element={<HomePage />} />
+        </Routes>
       </main>
 
+      {/* Global Footer */}
       <Footer />
 
       {/* Floating Action Controls */}
@@ -134,7 +174,18 @@ const MainLayout: React.FC = () => {
           {theme === 'dark' ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-cyan-400" />}
         </button>
 
-        {/* Admin-Only Floating Customizer Control (Hidden from regular visitors) */}
+        {/* Google Drive Quick Link */}
+        <a
+          href={GOOGLE_DRIVE_CONFIG.folderUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="hidden sm:flex items-center justify-center w-10 h-10 rounded-full bg-slate-900/90 hover:bg-slate-800 border border-cyan-500/40 text-cyan-300 shadow-2xl backdrop-blur-md transition-all hover:scale-105 cursor-pointer"
+          title="Open Google Drive Cloud Workspace"
+        >
+          <FolderGit2 className="w-4 h-4 text-cyan-400" />
+        </a>
+
+        {/* Admin-Only Floating Customizer Control */}
         {isAdmin && (
           <>
             <button
@@ -149,7 +200,7 @@ const MainLayout: React.FC = () => {
             <button
               onClick={() => setIsCustomizerOpen(true)}
               className="flex items-center gap-2 px-3.5 py-2.5 rounded-full bg-emerald-950/90 hover:bg-emerald-900 border border-emerald-500/60 text-emerald-300 text-xs font-semibold shadow-2xl backdrop-blur-md transition-all hover:scale-105 cursor-pointer"
-              title="Open Site Customizer (Admin Full Control)"
+              title="Open Site Customizer"
             >
               <Sliders className="w-4 h-4 text-emerald-400" />
               <span>Customize Site</span>
@@ -166,7 +217,7 @@ const MainLayout: React.FC = () => {
         </button>
       </div>
 
-      {/* Modals & Drawers */}
+      {/* Global Modals & Drawers */}
       <CustomizerDrawer />
       <PhotoEditorModal />
       <PlatformEditorModal />
@@ -181,7 +232,9 @@ const MainLayout: React.FC = () => {
 export default function App() {
   return (
     <CustomizationProvider>
-      <MainLayout />
+      <BrowserRouter>
+        <MainLayout />
+      </BrowserRouter>
     </CustomizationProvider>
   );
 }

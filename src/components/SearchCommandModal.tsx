@@ -1,8 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useCustomization } from '../context/CustomizationContext';
-import { Search, X, Layers, BookOpen, Film, Server, ArrowRight } from 'lucide-react';
+import { Search, X, Layers, BookOpen, Film, Server, ArrowRight, Cpu, HardDrive, FileSpreadsheet, ShieldAlert } from 'lucide-react';
 
 export const SearchCommandModal: React.FC = () => {
+  const navigate = useNavigate();
   const {
     siteConfig,
     isSearchOpen,
@@ -57,10 +59,13 @@ export const SearchCommandModal: React.FC = () => {
       v.tags.some(tag => tag.toLowerCase().includes(lowerQuery))
   );
 
-  const matchingServices = siteConfig.services.filter(
-    s =>
-      s.name.toLowerCase().includes(lowerQuery) ||
-      s.description.toLowerCase().includes(lowerQuery)
+  const engineeringTools = [
+    { title: 'Node & Storage Sizing Estimator', path: '/tools/sizing', desc: 'Decoupled ANF/FSx storage node sprawl reduction' },
+    { title: 'RVTools Migration Readiness Engine', path: '/tools/rvtools-analyzer', desc: 'In-browser .xlsx assessment & HCX wave mapping' },
+    { title: 'DR RPO/RTO & Replication Calculator', path: '/tools/dr-planner', desc: 'vSphere replication WAN bandwidth & SRM protection' },
+    { title: 'Automated Hybrid Blueprint Generator', path: '/tools/design-generator', desc: 'Generate production architecture BOM & deliverables' },
+  ].filter(
+    t => !lowerQuery || t.title.toLowerCase().includes(lowerQuery) || t.desc.toLowerCase().includes(lowerQuery)
   );
 
   const hasResults =
@@ -68,7 +73,7 @@ export const SearchCommandModal: React.FC = () => {
     matchingTutorials.length > 0 ||
     matchingDiagrams.length > 0 ||
     matchingVideos.length > 0 ||
-    matchingServices.length > 0;
+    engineeringTools.length > 0;
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-950/80 backdrop-blur-md p-4 sm:p-6 lg:p-12 flex justify-center animate-in fade-in duration-150">
@@ -81,20 +86,20 @@ export const SearchCommandModal: React.FC = () => {
             type="text"
             value={query}
             onChange={e => setQuery(e.target.value)}
-            placeholder="Search tutorials, architecture diagrams, video masterclasses..."
+            placeholder="Search tools, platforms, architecture diagrams, runbooks..."
             className="w-full bg-transparent text-sm text-white placeholder-slate-500 focus:outline-none"
           />
           {query && (
             <button
               onClick={() => setQuery('')}
-              className="text-xs text-slate-500 hover:text-white"
+              className="text-xs text-slate-500 hover:text-white cursor-pointer"
             >
               Clear
             </button>
           )}
           <button
             onClick={() => setIsSearchOpen(false)}
-            className="p-1 text-slate-400 hover:text-white rounded bg-slate-800"
+            className="p-1 text-slate-400 hover:text-white rounded bg-slate-800 cursor-pointer"
           >
             <X className="w-4 h-4" />
           </button>
@@ -104,21 +109,53 @@ export const SearchCommandModal: React.FC = () => {
         <div className="overflow-y-auto p-4 space-y-5 flex-1 text-xs">
           {!hasResults && query && (
             <div className="text-center py-8 text-slate-500">
-              No results found for "{query}". Try searching for "AVS", "HCX", "NSX-T", "FastPath", or "Storage".
+              No results found for "{query}". Try searching for "Sizing", "RVTools", "AVS", "HCX", "NSX-T", or "Storage".
             </div>
           )}
 
           {!query && (
-            <div className="py-3 text-slate-400 space-y-2">
+            <div className="py-2 text-slate-400 space-y-2">
               <div className="font-semibold text-slate-300">Quick Navigation Suggestions:</div>
               <div className="flex flex-wrap gap-2 text-xs">
-                {['Azure VMware Solution', 'NSX-T Microsegmentation', 'HCX Migration', 'NetApp Files', 'VMC on AWS', 'GCVE BigQuery'].map(tag => (
+                {['Node Sizing', 'RVTools Parser', 'Azure AVS', 'NSX-T Microseg', 'HCX Migration', 'DR Calculator'].map(tag => (
                   <button
                     key={tag}
                     onClick={() => setQuery(tag)}
-                    className="px-2.5 py-1 rounded bg-slate-950 hover:bg-slate-800 text-slate-300 border border-slate-800 transition-colors"
+                    className="px-2.5 py-1 rounded bg-slate-950 hover:bg-slate-800 text-slate-300 border border-slate-800 transition-colors cursor-pointer"
                   >
                     {tag}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Interactive Engineering Workbench Tools */}
+          {engineeringTools.length > 0 && (
+            <div className="space-y-2">
+              <div className="text-[11px] font-semibold uppercase tracking-wider text-cyan-400 flex items-center gap-1.5">
+                <Cpu className="w-3.5 h-3.5" />
+                <span>Interactive Engineering Tools ({engineeringTools.length})</span>
+              </div>
+              <div className="space-y-1.5">
+                {engineeringTools.map((tool, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => {
+                      setIsSearchOpen(false);
+                      navigate(tool.path);
+                    }}
+                    className="w-full text-left p-3 rounded-lg bg-slate-950 hover:bg-slate-800 border border-cyan-500/30 flex items-center justify-between group transition-colors cursor-pointer"
+                  >
+                    <div>
+                      <div className="font-bold text-white group-hover:text-cyan-300">
+                        {tool.title}
+                      </div>
+                      <div className="text-[11px] text-slate-400 font-mono">
+                        {tool.desc}
+                      </div>
+                    </div>
+                    <ArrowRight className="w-3.5 h-3.5 text-slate-500 group-hover:text-cyan-400 transition-transform group-hover:translate-x-0.5" />
                   </button>
                 ))}
               </div>
@@ -138,10 +175,9 @@ export const SearchCommandModal: React.FC = () => {
                     key={p.id}
                     onClick={() => {
                       setIsSearchOpen(false);
-                      const el = document.getElementById(`section-${p.id}`) || document.getElementById('platforms-container');
-                      el?.scrollIntoView({ behavior: 'smooth' });
+                      navigate(`/disciplines/${p.id}`);
                     }}
-                    className="w-full text-left p-3 rounded-lg bg-slate-950 hover:bg-slate-800 border border-slate-800/80 flex items-center justify-between group transition-colors"
+                    className="w-full text-left p-3 rounded-lg bg-slate-950 hover:bg-slate-800 border border-slate-800/80 flex items-center justify-between group transition-colors cursor-pointer"
                   >
                     <div>
                       <div className="font-semibold text-white group-hover:text-cyan-300">
@@ -172,10 +208,9 @@ export const SearchCommandModal: React.FC = () => {
                     onClick={() => {
                       setIsSearchOpen(false);
                       setSelectedDiagram(d);
-                      const el = document.getElementById('diagrams');
-                      el?.scrollIntoView({ behavior: 'smooth' });
+                      navigate('/blueprints');
                     }}
-                    className="w-full text-left p-3 rounded-lg bg-slate-950 hover:bg-slate-800 border border-slate-800/80 flex items-center justify-between group transition-colors"
+                    className="w-full text-left p-3 rounded-lg bg-slate-950 hover:bg-slate-800 border border-slate-800/80 flex items-center justify-between group transition-colors cursor-pointer"
                   >
                     <div>
                       <div className="font-semibold text-white group-hover:text-cyan-300">
@@ -206,8 +241,9 @@ export const SearchCommandModal: React.FC = () => {
                     onClick={() => {
                       setIsSearchOpen(false);
                       setSelectedTutorial(t);
+                      navigate('/resources/tutorials');
                     }}
-                    className="w-full text-left p-3 rounded-lg bg-slate-950 hover:bg-slate-800 border border-slate-800/80 flex items-center justify-between group transition-colors"
+                    className="w-full text-left p-3 rounded-lg bg-slate-950 hover:bg-slate-800 border border-slate-800/80 flex items-center justify-between group transition-colors cursor-pointer"
                   >
                     <div>
                       <div className="font-semibold text-white group-hover:text-emerald-300">
@@ -238,8 +274,9 @@ export const SearchCommandModal: React.FC = () => {
                     onClick={() => {
                       setIsSearchOpen(false);
                       setSelectedVideo(v);
+                      navigate('/resources/videos');
                     }}
-                    className="w-full text-left p-3 rounded-lg bg-slate-950 hover:bg-slate-800 border border-slate-800/80 flex items-center justify-between group transition-colors"
+                    className="w-full text-left p-3 rounded-lg bg-slate-950 hover:bg-slate-800 border border-slate-800/80 flex items-center justify-between group transition-colors cursor-pointer"
                   >
                     <div>
                       <div className="font-semibold text-white group-hover:text-amber-300">
@@ -260,7 +297,7 @@ export const SearchCommandModal: React.FC = () => {
         {/* Footer Shortcut Bar */}
         <div className="px-4 py-2.5 border-t border-slate-800 bg-slate-950 flex items-center justify-between text-[11px] text-slate-500">
           <span>Navigate with mouse or tap ESC to close</span>
-          <span className="font-mono">Global Search</span>
+          <span className="font-mono">Global Search · Multi-Page Navigation</span>
         </div>
       </div>
     </div>
