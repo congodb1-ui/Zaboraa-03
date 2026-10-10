@@ -1,0 +1,1046 @@
+import React, { useState } from 'react';
+import { useCustomization } from '../context/CustomizationContext';
+import { CloudProvider, ArchitectureDiagram, VideoItem, TutorialArticle } from '../types/siteData';
+import {
+  X,
+  Sliders,
+  Layers,
+  Film,
+  BookOpen,
+  User,
+  Download,
+  Upload,
+  RotateCcw,
+  Plus,
+  Trash2,
+  Check,
+  Save,
+  AlertCircle,
+  Camera,
+  Star,
+  Sparkles,
+  Sun,
+  Moon,
+  ShieldCheck,
+  Eye,
+  EyeOff
+} from 'lucide-react';
+
+export const CustomizerDrawer: React.FC = () => {
+  const {
+    siteConfig,
+    theme,
+    toggleTheme,
+    isCustomizerOpen,
+    setIsCustomizerOpen,
+    setIsPhotoEditorOpen,
+    setIsWatermarkModalOpen,
+    updateEnableHotspots,
+    setActiveEditPlatformId,
+    setFeaturedVideoId,
+    updateGeneralInfo,
+    updateHero,
+    addDiagram,
+    deleteDiagram,
+    addVideo,
+    deleteVideo,
+    addTutorial,
+    deleteTutorial,
+    resetToDefaults,
+    exportConfigJson,
+    importConfigJson
+  } = useCustomization();
+
+  const [activeTab, setActiveTab] = useState<'general' | 'hero' | 'platforms' | 'videos' | 'tutorials' | 'backup'>('general');
+  const [saveStatus, setSaveStatus] = useState<string>('');
+  const [importText, setImportText] = useState<string>('');
+  const [importError, setImportError] = useState<string>('');
+
+  // General state
+  const [brand, setBrand] = useState(siteConfig.brand);
+  const [tagline, setTagline] = useState(siteConfig.brandTagline);
+  const [founderName, setFounderName] = useState(siteConfig.founder.name);
+  const [founderRole, setFounderRole] = useState(siteConfig.founder.role);
+  const [founderBio, setFounderBio] = useState(siteConfig.founder.bio);
+  const [founderPhone, setFounderPhone] = useState(siteConfig.founder.phone);
+  const [founderEmail, setFounderEmail] = useState(siteConfig.founder.email);
+  const [founderLocation, setFounderLocation] = useState(siteConfig.founder.location);
+
+  // Hero state
+  const [heroEyebrow, setHeroEyebrow] = useState(siteConfig.hero.eyebrow);
+  const [heroHeadline, setHeroHeadline] = useState(siteConfig.hero.headline);
+  const [heroSubheadline, setHeroSubheadline] = useState(siteConfig.hero.subheadline);
+
+  // New Diagram Form State
+  const [newDiagTitle, setNewDiagTitle] = useState('');
+  const [newDiagSubtitle, setNewDiagSubtitle] = useState('');
+  const [newDiagProvider, setNewDiagProvider] = useState<CloudProvider>('Azure AVS');
+  const [newDiagCategory, setNewDiagCategory] = useState<'Hybrid Migration' | 'Disaster Recovery' | 'Zero-Trust Networking' | 'Storage Decoupling'>('Hybrid Migration');
+  const [newDiagDesc, setNewDiagDesc] = useState('');
+  const [newDiagIacCode, setNewDiagIacCode] = useState('');
+
+  // New Video Form State
+  const [newVideoTitle, setNewVideoTitle] = useState('');
+  const [newVideoProvider, setNewVideoProvider] = useState<CloudProvider>('Azure AVS');
+  const [newVideoDuration, setNewVideoDuration] = useState('15:00');
+  const [newVideoCategory, setNewVideoCategory] = useState<'Migration Runbook' | 'Network Architecture' | 'Storage Sizing' | 'Hands-on Labs'>('Migration Runbook');
+  const [newVideoUrl, setNewVideoUrl] = useState('https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ');
+  const [newVideoSummary, setNewVideoSummary] = useState('');
+  const [newVideoTakeaway, setNewVideoTakeaway] = useState('');
+
+  // New Tutorial Form State
+  const [newTutTitle, setNewTutTitle] = useState('');
+  const [newTutType, setNewTutType] = useState<'tutorial' | 'article'>('tutorial');
+  const [newTutProvider, setNewTutProvider] = useState<CloudProvider>('Azure AVS');
+  const [newTutReadTime, setNewTutReadTime] = useState('10 min read');
+  const [newTutSummary, setNewTutSummary] = useState('');
+  const [newTutSectionHeading, setNewTutSectionHeading] = useState('1. Implementation Steps');
+  const [newTutSectionContent, setNewTutSectionContent] = useState('');
+  const [newTutSectionCode, setNewTutSectionCode] = useState('');
+
+  if (!isCustomizerOpen) return null;
+
+  const showNotification = (msg: string) => {
+    setSaveStatus(msg);
+    setTimeout(() => setSaveStatus(''), 2500);
+  };
+
+  const handleSaveGeneral = (e: React.FormEvent) => {
+    e.preventDefault();
+    updateGeneralInfo({
+      brand,
+      brandTagline: tagline,
+      founder: {
+        ...siteConfig.founder,
+        name: founderName,
+        role: founderRole,
+        bio: founderBio,
+        phone: founderPhone,
+        email: founderEmail,
+        location: founderLocation
+      }
+    });
+    showNotification('General information updated!');
+  };
+
+  const handleSaveHero = (e: React.FormEvent) => {
+    e.preventDefault();
+    updateHero({
+      ...siteConfig.hero,
+      eyebrow: heroEyebrow,
+      headline: heroHeadline,
+      subheadline: heroSubheadline
+    });
+    showNotification('Hero section updated!');
+  };
+
+  const handleCreateDiagram = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newDiagTitle) return;
+
+    const created: ArchitectureDiagram = {
+      id: `diag-${Date.now()}`,
+      title: newDiagTitle,
+      subtitle: newDiagSubtitle || 'Enterprise Custom Reference Blueprint',
+      provider: newDiagProvider,
+      category: newDiagCategory,
+      description: newDiagDesc || 'Custom verified cloud architecture topology.',
+      nodes: [
+        {
+          id: `node-${Date.now()}-1`,
+          name: 'On-Premises Infrastructure',
+          layer: 'On-Premises',
+          status: 'Active',
+          description: 'Production datacenter environment with enterprise workloads.',
+          specs: 'Standard ESXi Cluster · 10Gbps Uplink',
+          iconType: 'datacenter'
+        },
+        {
+          id: `node-${Date.now()}-2`,
+          name: `${newDiagProvider} Dedicated SDDC`,
+          layer: 'Cloud SDDC Core',
+          status: 'Active',
+          description: `Target ${newDiagProvider} private cloud instances with automated clustering.`,
+          specs: 'Bare-Metal Clustered Nodes · vSAN',
+          iconType: 'server'
+        }
+      ],
+      links: [
+        {
+          from: `node-${Date.now()}-1`,
+          to: `node-${Date.now()}-2`,
+          label: 'Secure Cloud Transit Link',
+          speed: 'Private Peering',
+          type: 'fiber'
+        }
+      ],
+      bestPractices: [
+        `Ensure dedicated non-overlapping IP address spaces when deploying ${newDiagProvider}.`,
+        'Enable high-availability redundant connections across separate failure domains.'
+      ],
+      iacSnippet: {
+        language: 'terraform',
+        title: 'Terraform Resource Block',
+        code: newDiagIacCode || `# Example Terraform definition\nresource "provider_resource" "example" {\n  name = "${newDiagTitle}"\n}`
+      }
+    };
+
+    addDiagram(created);
+    setNewDiagTitle('');
+    setNewDiagSubtitle('');
+    setNewDiagDesc('');
+    setNewDiagIacCode('');
+    showNotification('Architecture Diagram added to repository!');
+  };
+
+  const handleCreateVideo = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newVideoTitle) return;
+
+    const created: VideoItem = {
+      id: `video-${Date.now()}`,
+      title: newVideoTitle,
+      provider: newVideoProvider,
+      duration: newVideoDuration,
+      category: newVideoCategory,
+      embedUrl: newVideoUrl,
+      summary: newVideoSummary || 'Technical deep dive and architectural walkthrough.',
+      chapters: [
+        { time: '00:00', title: 'Introduction & Scope' },
+        { time: '05:00', title: 'Deep-Dive Execution' }
+      ],
+      takeaways: newVideoTakeaway
+        ? [newVideoTakeaway]
+        : ['Verify all network routing and MTU settings before live cutover.'],
+      tags: [newVideoProvider, newVideoCategory],
+      publishedDate: 'Recently Published'
+    };
+
+    addVideo(created);
+    setNewVideoTitle('');
+    setNewVideoSummary('');
+    setNewVideoTakeaway('');
+    showNotification('Video Masterclass published!');
+  };
+
+  const handleCreateTutorial = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newTutTitle) return;
+
+    const created: TutorialArticle = {
+      id: `tut-${Date.now()}`,
+      slug: newTutTitle.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+      title: newTutTitle,
+      type: newTutType,
+      provider: newTutProvider,
+      category: 'Cloud Migration',
+      readTime: newTutReadTime,
+      publishedDate: 'October 2026',
+      difficulty: 'Enterprise Architect',
+      summary: newTutSummary || 'Step-by-step implementation guide for enterprise cloud architects.',
+      tags: [newTutProvider, 'Automation', 'CLI'],
+      author: {
+        name: siteConfig.founder.name,
+        title: siteConfig.founder.role
+      },
+      prerequisites: ['Valid cloud tenancy credentials', 'Administrator role assigned'],
+      sections: [
+        {
+          heading: newTutSectionHeading,
+          content: newTutSectionContent || 'Follow the configuration procedure below.',
+          codeBlock: newTutSectionCode
+            ? {
+                language: 'bash',
+                code: newTutSectionCode,
+                description: 'Command line script'
+              }
+            : undefined
+        }
+      ]
+    };
+
+    addTutorial(created);
+    setNewTutTitle('');
+    setNewTutSummary('');
+    setNewTutSectionContent('');
+    setNewTutSectionCode('');
+    showNotification('Tutorial guide published!');
+  };
+
+  const handleImport = () => {
+    setImportError('');
+    if (!importText.trim()) return;
+    const success = importConfigJson(importText);
+    if (success) {
+      showNotification('Configuration imported successfully!');
+      setImportText('');
+    } else {
+      setImportError('Invalid JSON format. Please verify configuration structure.');
+    }
+  };
+
+  const handleExportDownload = () => {
+    const jsonStr = exportConfigJson();
+    const blob = new Blob([jsonStr], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `zaboraa_site_config_${Date.now()}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    showNotification('Config JSON downloaded!');
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 overflow-hidden bg-slate-950/80 backdrop-blur-sm flex justify-end animate-in fade-in duration-200">
+      <div className="w-full max-w-2xl bg-slate-900 border-l border-slate-800 h-full flex flex-col shadow-2xl">
+        {/* Drawer Header */}
+        <div className="p-4 sm:p-5 border-b border-slate-800 flex items-center justify-between bg-slate-950">
+          <div className="flex items-center gap-2.5">
+            <div className="p-2 rounded-lg bg-cyan-950 text-cyan-400 border border-cyan-800/80">
+              <Sliders className="w-4 h-4" />
+            </div>
+            <div>
+              <h2 className="text-base font-bold text-white">Site Customizer Studio</h2>
+              <p className="text-xs text-slate-400">Live editor for content, diagrams, tutorials & videos</p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            {saveStatus && (
+              <span className="text-xs text-emerald-400 flex items-center gap-1 font-medium bg-emerald-950/80 px-2 py-1 rounded border border-emerald-800">
+                <Check className="w-3.5 h-3.5" />
+                {saveStatus}
+              </span>
+            )}
+            <button
+              onClick={() => setIsCustomizerOpen(false)}
+              className="p-1.5 text-slate-400 hover:text-white bg-slate-800 rounded-lg"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+        </div>
+
+        {/* Tab Navigation */}
+        <div className="flex overflow-x-auto border-b border-slate-800 bg-slate-950/50 p-1.5 gap-1 text-xs">
+          {[
+            { id: 'general', label: 'General & Theme', icon: User },
+            { id: 'hero', label: 'Hero Copy', icon: Sliders },
+            { id: 'platforms', label: 'Dedicated Architectures', icon: Layers },
+            { id: 'videos', label: 'Videos', icon: Film },
+            { id: 'tutorials', label: 'Tutorials', icon: BookOpen },
+            { id: 'backup', label: 'Export / Import', icon: Download }
+          ].map(tab => {
+            const Icon = tab.icon;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id as any)}
+                className={`flex items-center gap-1.5 px-3 py-2 rounded-lg font-medium whitespace-nowrap transition-colors ${
+                  activeTab === tab.id
+                    ? 'bg-cyan-500/20 text-cyan-300 font-semibold border border-cyan-500/40'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                <Icon className="w-3.5 h-3.5" />
+                <span>{tab.label}</span>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Content Body */}
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6">
+          {/* TAB 1: GENERAL & FOUNDER */}
+          {activeTab === 'general' && (
+            <form onSubmit={handleSaveGeneral} className="space-y-4 text-xs">
+              {/* Theme Mode Selector */}
+              <div className="p-3.5 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-between gap-3">
+                <div className="space-y-0.5">
+                  <div className="font-semibold text-white">Global Color Theme</div>
+                  <div className="text-[11px] text-slate-400">
+                    Switch between Default Dark Mode and High-Contrast Light Mode
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={toggleTheme}
+                  className="px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-700 text-xs font-semibold text-cyan-300 flex items-center gap-1.5 hover:bg-slate-800 transition-colors"
+                >
+                  {theme === 'dark' ? (
+                    <>
+                      <Sun className="w-3.5 h-3.5 text-amber-400" />
+                      <span>Switch to Light</span>
+                    </>
+                  ) : (
+                    <>
+                      <Moon className="w-3.5 h-3.5 text-cyan-400" />
+                      <span>Switch to Dark</span>
+                    </>
+                  )}
+                </button>
+              </div>
+
+              {/* Interactive Architecture Hotspots Global Admin Setting */}
+              <div className="p-3.5 rounded-xl bg-slate-950 border border-slate-800 space-y-2.5">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="space-y-0.5">
+                    <div className="flex items-center gap-2">
+                      <span className="font-semibold text-white">Interactive Diagram Hotspots</span>
+                      <span className={`text-[10px] font-mono px-2 py-0.5 rounded font-bold uppercase ${
+                        siteConfig.enableHotspots
+                          ? 'bg-emerald-950 text-emerald-400 border border-emerald-800'
+                          : 'bg-slate-900 text-slate-400 border border-slate-800'
+                      }`}>
+                        {siteConfig.enableHotspots ? 'Enabled Globally' : 'Disabled Everywhere'}
+                      </span>
+                    </div>
+                    <div className="text-[11px] text-slate-400 leading-relaxed">
+                      Control interactive hotspot display across all architecture diagrams. If disabled here from top settings, hotspots will not be shown anywhere on the site. If enabled, diagrams provide discrete inspection pins that are hidden by default until toggled on by viewers.
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const nextVal = !siteConfig.enableHotspots;
+                      updateEnableHotspots(nextVal);
+                      showNotification(nextVal ? 'Hotspots globally enabled!' : 'Hotspots globally hidden across entire site!');
+                    }}
+                    className={`px-3 py-1.5 rounded-lg border text-xs font-semibold flex items-center gap-1.5 transition-all shrink-0 cursor-pointer ${
+                      siteConfig.enableHotspots
+                        ? 'bg-emerald-950/80 hover:bg-emerald-900 border-emerald-600/80 text-emerald-300'
+                        : 'bg-slate-900 hover:bg-slate-800 border-slate-700 text-slate-300'
+                    }`}
+                  >
+                    {siteConfig.enableHotspots ? (
+                      <>
+                        <Eye className="w-3.5 h-3.5 text-emerald-400" />
+                        <span>Hotspots Active</span>
+                      </>
+                    ) : (
+                      <>
+                        <EyeOff className="w-3.5 h-3.5 text-slate-400" />
+                        <span>Hotspots Hidden</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              {/* Watermark Configuration Card */}
+              <div className="p-3.5 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-between gap-3">
+                <div className="space-y-0.5">
+                  <div className="flex items-center gap-2">
+                    <ShieldCheck className="w-4 h-4 text-cyan-400" />
+                    <span className="font-semibold text-white">Architecture Image Watermark</span>
+                    <span className={`text-[10px] font-mono px-2 py-0.5 rounded font-bold uppercase ${
+                      siteConfig.watermark?.enabled
+                        ? 'bg-cyan-950 text-cyan-400 border border-cyan-800'
+                        : 'bg-slate-900 text-slate-400 border border-slate-800'
+                    }`}>
+                      {siteConfig.watermark?.enabled ? 'Watermark On' : 'Watermark Off'}
+                    </span>
+                  </div>
+                  <div className="text-[11px] text-slate-400">
+                    Customize text or upload image logo watermark overlaid on diagrams.
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setIsWatermarkModalOpen(true)}
+                  className="px-3 py-1.5 rounded-lg bg-cyan-950 hover:bg-cyan-900 border border-cyan-700 text-cyan-300 text-xs font-semibold transition-colors flex items-center gap-1.5 shrink-0 cursor-pointer"
+                >
+                  <ShieldCheck className="w-3.5 h-3.5 text-cyan-400" />
+                  <span>Configure Watermark</span>
+                </button>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-slate-300 font-medium">Brand / Firm Name</label>
+                <input
+                  type="text"
+                  value={brand}
+                  onChange={e => setBrand(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-white focus:outline-none focus:border-cyan-500"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-slate-300 font-medium">Tagline</label>
+                <input
+                  type="text"
+                  value={tagline}
+                  onChange={e => setTagline(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-white focus:outline-none focus:border-cyan-500"
+                />
+              </div>
+
+              {/* Founder Profile Photo Section */}
+              <div className="p-3.5 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-lg overflow-hidden border border-cyan-500/50 bg-slate-800 shrink-0">
+                    <img
+                      src={siteConfig.founder.portraitImage || '/assets/images/wasim_sayyed_executive_1791473154875.jpg'}
+                      alt="Wasim Portrait"
+                      onError={(e) => {
+                        const target = e.currentTarget;
+                        if (target.src.includes('/src/assets/images/')) {
+                          target.src = target.src.replace('/src/assets/images/', '/assets/images/');
+                        } else if (target.src.includes('/assets/images/')) {
+                          target.src = target.src.replace('/assets/images/', '/src/assets/images/');
+                        }
+                      }}
+                      className="w-full h-full object-cover"
+                      style={{
+                        objectPosition: siteConfig.founder.photoStyle?.objectPosition || 'top',
+                        transform: `scale(${siteConfig.founder.photoStyle?.zoom || 1.05})`
+                      }}
+                    />
+                  </div>
+                  <div>
+                    <div className="font-semibold text-white">Executive Profile Photo</div>
+                    <div className="text-[11px] text-slate-400">Upload Wasim-Pic-4.png, adjust zoom & glow</div>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setIsPhotoEditorOpen(true)}
+                  className="px-3 py-1.5 bg-cyan-950 hover:bg-cyan-900 border border-cyan-800 text-cyan-300 rounded-lg font-semibold text-xs flex items-center gap-1.5 transition-colors"
+                >
+                  <Camera className="w-3.5 h-3.5" />
+                  <span>Edit Photo</span>
+                </button>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3 pt-2">
+                <div className="space-y-1">
+                  <label className="text-slate-300 font-medium">Lead Architect Name</label>
+                  <input
+                    type="text"
+                    value={founderName}
+                    onChange={e => setFounderName(e.target.value)}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-white focus:outline-none focus:border-cyan-500"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-slate-300 font-medium">Role Title</label>
+                  <input
+                    type="text"
+                    value={founderRole}
+                    onChange={e => setFounderRole(e.target.value)}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-white focus:outline-none focus:border-cyan-500"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="text-slate-300 font-medium">Direct Phone / WhatsApp</label>
+                  <input
+                    type="text"
+                    value={founderPhone}
+                    onChange={e => setFounderPhone(e.target.value)}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-white focus:outline-none focus:border-cyan-500"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-slate-300 font-medium">Email Address</label>
+                  <input
+                    type="email"
+                    value={founderEmail}
+                    onChange={e => setFounderEmail(e.target.value)}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-white focus:outline-none focus:border-cyan-500"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-slate-300 font-medium">Location / Coverage</label>
+                <input
+                  type="text"
+                  value={founderLocation}
+                  onChange={e => setFounderLocation(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-white focus:outline-none focus:border-cyan-500"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-slate-300 font-medium">Founder Executive Bio</label>
+                <textarea
+                  rows={4}
+                  value={founderBio}
+                  onChange={e => setFounderBio(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-white focus:outline-none focus:border-cyan-500"
+                />
+              </div>
+
+              <button
+                type="submit"
+                className="w-full py-2.5 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold rounded-lg transition-colors flex items-center justify-center gap-1.5"
+              >
+                <Save className="w-3.5 h-3.5" />
+                <span>Save General Settings</span>
+              </button>
+            </form>
+          )}
+
+          {/* TAB 2: HERO COPY */}
+          {activeTab === 'hero' && (
+            <form onSubmit={handleSaveHero} className="space-y-4 text-xs">
+              <div className="space-y-1">
+                <label className="text-slate-300 font-medium">Eyebrow Kicker</label>
+                <input
+                  type="text"
+                  value={heroEyebrow}
+                  onChange={e => setHeroEyebrow(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-white focus:outline-none focus:border-cyan-500"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-slate-300 font-medium">Main Headline</label>
+                <input
+                  type="text"
+                  value={heroHeadline}
+                  onChange={e => setHeroHeadline(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-white focus:outline-none focus:border-cyan-500"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-slate-300 font-medium">Subheadline Description</label>
+                <textarea
+                  rows={4}
+                  value={heroSubheadline}
+                  onChange={e => setHeroSubheadline(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-white focus:outline-none focus:border-cyan-500"
+                />
+              </div>
+
+              <button
+                type="submit"
+                className="w-full py-2.5 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold rounded-lg transition-colors flex items-center justify-center gap-1.5"
+              >
+                <Save className="w-3.5 h-3.5" />
+                <span>Save Hero Copy</span>
+              </button>
+            </form>
+          )}
+
+          {/* TAB 3: DEDICATED ARCHITECTURES */}
+          {activeTab === 'platforms' && (
+            <div className="space-y-6 text-xs">
+              <div className="p-3.5 rounded-xl bg-slate-950 border border-slate-800 space-y-1.5">
+                <div className="font-semibold text-white flex items-center gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
+                  <span>Dedicated Architecture Platforms & Solutions ({siteConfig.platformShowcases?.length || 6})</span>
+                </div>
+                <p className="text-slate-400 text-[11px] leading-relaxed">
+                  Customize the dedicated sections for AVS, GCVE, VMC on AWS, NSX, HCX, and SRM: upload architecture diagrams, add designs, set video walkthroughs, and edit descriptions.
+                </p>
+              </div>
+
+              <div className="space-y-3">
+                {(siteConfig.platformShowcases || []).map(p => (
+                  <div
+                    key={p.id}
+                    className="p-4 bg-slate-950 rounded-xl border border-slate-800 space-y-3"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex items-center gap-3">
+                        <div className="w-16 h-11 rounded-lg overflow-hidden bg-slate-900 border border-slate-800 shrink-0">
+                          <img
+                            src={p.imageUrl}
+                            alt={p.title}
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="font-semibold text-white text-xs">{p.platform}</span>
+                            <span className="text-[10px] text-cyan-400 font-mono bg-cyan-950/80 px-1.5 py-0.5 rounded border border-cyan-800">
+                              {p.badge}
+                            </span>
+                          </div>
+                          <div className="text-[11px] text-slate-400 mt-0.5 line-clamp-1">
+                            {p.title}
+                          </div>
+                        </div>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => setActiveEditPlatformId(p.id)}
+                        className="px-3 py-1.5 bg-cyan-950 hover:bg-cyan-900 border border-cyan-800 text-cyan-300 font-semibold rounded-lg text-xs flex items-center gap-1 transition-colors whitespace-nowrap"
+                      >
+                        <span>Edit Section</span>
+                      </button>
+                    </div>
+
+                    <p className="text-[11px] text-slate-400 line-clamp-2 leading-relaxed">
+                      {p.description}
+                    </p>
+
+                    <div className="pt-2 border-t border-slate-900 flex items-center justify-between text-[11px] text-slate-500">
+                      <span>Media Mode: <span className="text-slate-300 uppercase font-mono">{p.mediaType || 'Image'}</span></span>
+                      <span>{p.keyDeliverables?.length || 0} Key Deliverables</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* TAB 4: VIDEOS */}
+          {activeTab === 'videos' && (
+            <div className="space-y-6 text-xs">
+              {/* Featured Video Selector */}
+              <div className="p-3.5 rounded-xl bg-slate-950 border border-slate-800 space-y-2">
+                <div className="font-semibold text-white flex items-center gap-1.5">
+                  <Star className="w-3.5 h-3.5 text-cyan-400 fill-current" />
+                  <span>Main Page Featured Masterclass Video</span>
+                </div>
+                <p className="text-slate-400 text-[11px]">
+                  Choose which masterclass video is highlighted prominently on the homepage cinema screen.
+                </p>
+                <select
+                  value={siteConfig.featuredVideoId || siteConfig.videos[0]?.id}
+                  onChange={e => {
+                    setFeaturedVideoId(e.target.value);
+                    showNotification('Main page featured video updated!');
+                  }}
+                  className="w-full bg-slate-900 border border-slate-800 rounded-lg p-2.5 text-cyan-300 font-semibold focus:outline-none focus:border-cyan-400"
+                >
+                  {siteConfig.videos.map(v => (
+                    <option key={v.id} value={v.id}>
+                      {v.title} ({v.provider} · {v.duration})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="space-y-2">
+                <div className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+                  Published Video Sessions ({siteConfig.videos.length})
+                </div>
+                <div className="space-y-2 max-h-48 overflow-y-auto">
+                  {siteConfig.videos.map(v => (
+                    <div
+                      key={v.id}
+                      className="p-3 bg-slate-950 rounded-lg border border-slate-800 flex items-center justify-between"
+                    >
+                      <div>
+                        <div className="font-semibold text-white">{v.title}</div>
+                        <div className="text-[11px] text-slate-400 font-mono">
+                          {v.provider} · {v.duration} · {v.category}
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => deleteVideo(v.id)}
+                        className="text-rose-400 hover:text-rose-300 p-1.5 hover:bg-rose-950/40 rounded transition-colors"
+                        title="Delete Video"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Add New Video Form */}
+              <form onSubmit={handleCreateVideo} className="p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-3">
+                <div className="font-bold text-white text-sm flex items-center gap-1.5">
+                  <Plus className="w-4 h-4 text-cyan-400" />
+                  <span>Publish New Video Session</span>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-slate-300 font-medium">Video Title</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. Live Migration of 1,000+ VMs on AVS"
+                    value={newVideoTitle}
+                    onChange={e => setNewVideoTitle(e.target.value)}
+                    className="w-full bg-slate-900 border border-slate-800 rounded-lg p-2 text-white"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="space-y-1">
+                    <label className="text-slate-300 font-medium">Platform</label>
+                    <select
+                      value={newVideoProvider}
+                      onChange={e => setNewVideoProvider(e.target.value as any)}
+                      className="w-full bg-slate-900 border border-slate-800 rounded-lg p-2 text-white"
+                    >
+                      <option value="Azure AVS">Azure AVS</option>
+                      <option value="AWS VMC">AWS VMC</option>
+                      <option value="Google Cloud GCVE">Google Cloud GCVE</option>
+                      <option value="NSX-T SDN">NSX-T SDN</option>
+                    </select>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-slate-300 font-medium">Duration (MM:SS)</label>
+                    <input
+                      type="text"
+                      value={newVideoDuration}
+                      onChange={e => setNewVideoDuration(e.target.value)}
+                      className="w-full bg-slate-900 border border-slate-800 rounded-lg p-2 text-white"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-slate-300 font-medium">Embed Player URL (YouTube/Vimeo/MP4)</label>
+                  <input
+                    type="text"
+                    value={newVideoUrl}
+                    onChange={e => setNewVideoUrl(e.target.value)}
+                    className="w-full bg-slate-900 border border-slate-800 rounded-lg p-2 text-white font-mono text-[11px]"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-slate-300 font-medium">Summary</label>
+                  <textarea
+                    rows={2}
+                    value={newVideoSummary}
+                    onChange={e => setNewVideoSummary(e.target.value)}
+                    placeholder="What does this masterclass cover?"
+                    className="w-full bg-slate-900 border border-slate-800 rounded-lg p-2 text-white"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-slate-300 font-medium">Key Architectural Takeaway</label>
+                  <input
+                    type="text"
+                    value={newVideoTakeaway}
+                    onChange={e => setNewVideoTakeaway(e.target.value)}
+                    placeholder="e.g. Always configure ExpressRoute FastPath before migrating"
+                    className="w-full bg-slate-900 border border-slate-800 rounded-lg p-2 text-white"
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  className="w-full py-2 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold rounded-lg transition-colors"
+                >
+                  Publish Video
+                </button>
+              </form>
+            </div>
+          )}
+
+          {/* TAB 5: TUTORIALS */}
+          {activeTab === 'tutorials' && (
+            <div className="space-y-6 text-xs">
+              <div className="space-y-2">
+                <div className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+                  Published Articles ({siteConfig.tutorials.length})
+                </div>
+                <div className="space-y-2 max-h-48 overflow-y-auto">
+                  {siteConfig.tutorials.map(tut => (
+                    <div
+                      key={tut.id}
+                      className="p-3 bg-slate-950 rounded-lg border border-slate-800 flex items-center justify-between"
+                    >
+                      <div>
+                        <div className="font-semibold text-white">{tut.title}</div>
+                        <div className="text-[11px] text-slate-400 font-mono">
+                          {tut.type.toUpperCase()} · {tut.provider} · {tut.readTime}
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => deleteTutorial(tut.id)}
+                        className="text-rose-400 hover:text-rose-300 p-1.5 hover:bg-rose-950/40 rounded transition-colors"
+                        title="Delete Tutorial"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Add New Tutorial Form */}
+              <form onSubmit={handleCreateTutorial} className="p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-3">
+                <div className="font-bold text-white text-sm flex items-center gap-1.5">
+                  <Plus className="w-4 h-4 text-cyan-400" />
+                  <span>Publish New Tutorial or Article</span>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-slate-300 font-medium">Title</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. Configuring HCX Bulk Replication via PowerCLI"
+                    value={newTutTitle}
+                    onChange={e => setNewTutTitle(e.target.value)}
+                    className="w-full bg-slate-900 border border-slate-800 rounded-lg p-2 text-white"
+                  />
+                </div>
+
+                <div className="grid grid-cols-3 gap-2">
+                  <div className="space-y-1">
+                    <label className="text-slate-300 font-medium">Type</label>
+                    <select
+                      value={newTutType}
+                      onChange={e => setNewTutType(e.target.value as any)}
+                      className="w-full bg-slate-900 border border-slate-800 rounded-lg p-2 text-white"
+                    >
+                      <option value="tutorial">Tutorial</option>
+                      <option value="article">Article</option>
+                    </select>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-slate-300 font-medium">Provider</label>
+                    <select
+                      value={newTutProvider}
+                      onChange={e => setNewTutProvider(e.target.value as any)}
+                      className="w-full bg-slate-900 border border-slate-800 rounded-lg p-2 text-white"
+                    >
+                      <option value="Azure AVS">Azure AVS</option>
+                      <option value="AWS VMC">AWS VMC</option>
+                      <option value="Google Cloud GCVE">Google Cloud GCVE</option>
+                      <option value="NSX-T SDN">NSX-T SDN</option>
+                      <option value="Multi-Cloud">Multi-Cloud</option>
+                    </select>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-slate-300 font-medium">Read Time</label>
+                    <input
+                      type="text"
+                      value={newTutReadTime}
+                      onChange={e => setNewTutReadTime(e.target.value)}
+                      className="w-full bg-slate-900 border border-slate-800 rounded-lg p-2 text-white"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-slate-300 font-medium">Summary Overview</label>
+                  <textarea
+                    rows={2}
+                    value={newTutSummary}
+                    onChange={e => setNewTutSummary(e.target.value)}
+                    placeholder="Brief executive summary"
+                    className="w-full bg-slate-900 border border-slate-800 rounded-lg p-2 text-white"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-slate-300 font-medium">Step Content</label>
+                  <textarea
+                    rows={3}
+                    value={newTutSectionContent}
+                    onChange={e => setNewTutSectionContent(e.target.value)}
+                    placeholder="Explain the technical procedure step-by-step..."
+                    className="w-full bg-slate-900 border border-slate-800 rounded-lg p-2 text-white"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-slate-300 font-medium">Code Snippet (Optional)</label>
+                  <textarea
+                    rows={3}
+                    value={newTutSectionCode}
+                    onChange={e => setNewTutSectionCode(e.target.value)}
+                    placeholder="# PowerShell or Bash commands..."
+                    className="w-full bg-slate-900 border border-slate-800 rounded-lg p-2 font-mono text-white text-[11px]"
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  className="w-full py-2 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold rounded-lg transition-colors"
+                >
+                  Publish Guide
+                </button>
+              </form>
+            </div>
+          )}
+
+          {/* TAB 6: BACKUP / IMPORT / EXPORT */}
+          {activeTab === 'backup' && (
+            <div className="space-y-6 text-xs">
+              <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-3">
+                <div className="font-bold text-white text-sm flex items-center gap-1.5">
+                  <Download className="w-4 h-4 text-cyan-400" />
+                  <span>Export Site Configuration (JSON)</span>
+                </div>
+                <p className="text-slate-400">
+                  Export all your customized diagrams, tutorials, videos, and branding into a backup JSON file.
+                </p>
+                <button
+                  onClick={handleExportDownload}
+                  className="w-full py-2 bg-slate-800 hover:bg-slate-700 text-white font-semibold rounded-lg border border-slate-700 transition-colors flex items-center justify-center gap-1.5"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  <span>Download Backup JSON</span>
+                </button>
+              </div>
+
+              <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-3">
+                <div className="font-bold text-white text-sm flex items-center gap-1.5">
+                  <Upload className="w-4 h-4 text-cyan-400" />
+                  <span>Import / Restore Configuration</span>
+                </div>
+                <p className="text-slate-400">
+                  Paste previously exported JSON to load your custom website configuration.
+                </p>
+                <textarea
+                  rows={4}
+                  value={importText}
+                  onChange={e => setImportText(e.target.value)}
+                  placeholder="Paste JSON config string here..."
+                  className="w-full bg-slate-900 border border-slate-800 rounded-lg p-2 text-white font-mono text-[11px]"
+                />
+                {importError && (
+                  <div className="text-rose-400 flex items-center gap-1">
+                    <AlertCircle className="w-3.5 h-3.5" />
+                    <span>{importError}</span>
+                  </div>
+                )}
+                <button
+                  onClick={handleImport}
+                  className="w-full py-2 bg-cyan-600 hover:bg-cyan-500 text-white font-semibold rounded-lg transition-colors flex items-center justify-center gap-1.5"
+                >
+                  <Upload className="w-3.5 h-3.5" />
+                  <span>Apply Imported Configuration</span>
+                </button>
+              </div>
+
+              <div className="p-4 rounded-xl bg-rose-950/20 border border-rose-900/40 space-y-3">
+                <div className="font-bold text-rose-300 text-sm flex items-center gap-1.5">
+                  <RotateCcw className="w-4 h-4" />
+                  <span>Restore Factory Defaults</span>
+                </div>
+                <p className="text-rose-200/70">
+                  Revert all content, diagrams, tutorials, and videos back to original Zaboraa Technologies defaults.
+                </p>
+                <button
+                  onClick={() => {
+                    if (confirm('Are you sure you want to reset all modifications to defaults?')) {
+                      resetToDefaults();
+                      showNotification('Site reset to factory defaults.');
+                    }
+                  }}
+                  className="w-full py-2 bg-rose-900/60 hover:bg-rose-800 text-rose-100 font-semibold rounded-lg border border-rose-700/60 transition-colors"
+                >
+                  Reset Everything
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};

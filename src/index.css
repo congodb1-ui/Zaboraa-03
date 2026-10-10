@@ -1,0 +1,92 @@
+@import "tailwindcss";
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+    font-family: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  }
+  code, pre, kbd, .font-mono {
+    font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  }
+}
+
+/* Custom scrollbars for high-density code and diagram views */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: #020617;
+}
+::-webkit-scrollbar-thumb {
+  background: #1e293b;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #334155;
+}
+
+/* High-Contrast Light Mode Accessibility Overrides */
+html.light-high-contrast {
+  color-scheme: light;
+}
+
+html.light-high-contrast body,
+html.light-high-contrast .theme-root {
+  background-color: #f8fafc !important;
+  color: #090d16 !important;
+}
+
+html.light-high-contrast .bg-slate-950 {
+  background-color: #ffffff !important;
+}
+
+html.light-high-contrast .bg-slate-900 {
+  background-color: #f1f5f9 !important;
+}
+
+html.light-high-contrast .bg-slate-900\/90,
+html.light-high-contrast .bg-slate-900\/80,
+html.light-high-contrast .bg-slate-900\/70,
+html.light-high-contrast .bg-slate-900\/60,
+html.light-high-contrast .bg-slate-900\/50,
+html.light-high-contrast .bg-slate-900\/40 {
+  background-color: #ffffff !important;
+}
+
+html.light-high-contrast .border-slate-800,
+html.light-high-contrast .border-slate-800\/80,
+html.light-high-contrast .border-slate-700 {
+  border-color: #cbd5e1 !important;
+}
+
+html.light-high-contrast .text-slate-100,
+html.light-high-contrast .text-white {
+  color: #090d16 !important;
+}
+
+html.light-high-contrast .text-slate-300,
+html.light-high-contrast .text-slate-200 {
+  color: #1e293b !important;
+}
+
+html.light-high-contrast .text-slate-400 {
+  color: #334155 !important;
+}
+
+html.light-high-contrast .text-slate-500 {
+  color: #475569 !important;
+}
+
+html.light-high-contrast .divide-slate-800,
+html.light-high-contrast .divide-slate-800\/80 {
+  border-color: #cbd5e1 !important;
+}
+
+html.light-high-contrast ::-webkit-scrollbar-track {
+  background: #e2e8f0;
+}
+html.light-high-contrast ::-webkit-scrollbar-thumb {
+  background: #94a3b8;
+}
+

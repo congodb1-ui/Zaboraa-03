@@ -1,0 +1,268 @@
+import React, { useState, useEffect, useRef } from 'react';
+import { useCustomization } from '../context/CustomizationContext';
+import { Search, X, Layers, BookOpen, Film, Server, ArrowRight } from 'lucide-react';
+
+export const SearchCommandModal: React.FC = () => {
+  const {
+    siteConfig,
+    isSearchOpen,
+    setIsSearchOpen,
+    setSelectedTutorial,
+    setSelectedDiagram,
+    setSelectedVideo
+  } = useCustomization();
+
+  const [query, setQuery] = useState('');
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (isSearchOpen) {
+      setTimeout(() => inputRef.current?.focus(), 50);
+    } else {
+      setQuery('');
+    }
+  }, [isSearchOpen]);
+
+  if (!isSearchOpen) return null;
+
+  const lowerQuery = query.toLowerCase().trim();
+
+  // Filter across all types
+  const matchingPlatforms = (siteConfig.platformShowcases || []).filter(
+    p =>
+      p.platform.toLowerCase().includes(lowerQuery) ||
+      p.title.toLowerCase().includes(lowerQuery) ||
+      p.description.toLowerCase().includes(lowerQuery) ||
+      p.techTags.some(tag => tag.toLowerCase().includes(lowerQuery))
+  );
+
+  const matchingTutorials = siteConfig.tutorials.filter(
+    t =>
+      t.title.toLowerCase().includes(lowerQuery) ||
+      t.summary.toLowerCase().includes(lowerQuery) ||
+      t.tags.some(tag => tag.toLowerCase().includes(lowerQuery))
+  );
+
+  const matchingDiagrams = siteConfig.diagrams.filter(
+    d =>
+      d.title.toLowerCase().includes(lowerQuery) ||
+      d.description.toLowerCase().includes(lowerQuery) ||
+      d.provider.toLowerCase().includes(lowerQuery)
+  );
+
+  const matchingVideos = siteConfig.videos.filter(
+    v =>
+      v.title.toLowerCase().includes(lowerQuery) ||
+      v.summary.toLowerCase().includes(lowerQuery) ||
+      v.tags.some(tag => tag.toLowerCase().includes(lowerQuery))
+  );
+
+  const matchingServices = siteConfig.services.filter(
+    s =>
+      s.name.toLowerCase().includes(lowerQuery) ||
+      s.description.toLowerCase().includes(lowerQuery)
+  );
+
+  const hasResults =
+    matchingPlatforms.length > 0 ||
+    matchingTutorials.length > 0 ||
+    matchingDiagrams.length > 0 ||
+    matchingVideos.length > 0 ||
+    matchingServices.length > 0;
+
+  return (
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-950/80 backdrop-blur-md p-4 sm:p-6 lg:p-12 flex justify-center animate-in fade-in duration-150">
+      <div className="relative w-full max-w-2xl bg-slate-900 rounded-2xl border border-slate-800 shadow-2xl overflow-hidden my-auto flex flex-col max-h-[85vh]">
+        {/* Search Input Bar */}
+        <div className="p-4 border-b border-slate-800 flex items-center gap-3 bg-slate-950">
+          <Search className="w-5 h-5 text-cyan-400 shrink-0" />
+          <input
+            ref={inputRef}
+            type="text"
+            value={query}
+            onChange={e => setQuery(e.target.value)}
+            placeholder="Search tutorials, architecture diagrams, video masterclasses..."
+            className="w-full bg-transparent text-sm text-white placeholder-slate-500 focus:outline-none"
+          />
+          {query && (
+            <button
+              onClick={() => setQuery('')}
+              className="text-xs text-slate-500 hover:text-white"
+            >
+              Clear
+            </button>
+          )}
+          <button
+            onClick={() => setIsSearchOpen(false)}
+            className="p-1 text-slate-400 hover:text-white rounded bg-slate-800"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        {/* Results List */}
+        <div className="overflow-y-auto p-4 space-y-5 flex-1 text-xs">
+          {!hasResults && query && (
+            <div className="text-center py-8 text-slate-500">
+              No results found for "{query}". Try searching for "AVS", "HCX", "NSX-T", "FastPath", or "Storage".
+            </div>
+          )}
+
+          {!query && (
+            <div className="py-3 text-slate-400 space-y-2">
+              <div className="font-semibold text-slate-300">Quick Navigation Suggestions:</div>
+              <div className="flex flex-wrap gap-2 text-xs">
+                {['Azure VMware Solution', 'NSX-T Microsegmentation', 'HCX Migration', 'NetApp Files', 'VMC on AWS', 'GCVE BigQuery'].map(tag => (
+                  <button
+                    key={tag}
+                    onClick={() => setQuery(tag)}
+                    className="px-2.5 py-1 rounded bg-slate-950 hover:bg-slate-800 text-slate-300 border border-slate-800 transition-colors"
+                  >
+                    {tag}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Core Platforms Matches */}
+          {matchingPlatforms.length > 0 && (
+            <div className="space-y-2">
+              <div className="text-[11px] font-semibold uppercase tracking-wider text-cyan-400 flex items-center gap-1.5">
+                <Layers className="w-3.5 h-3.5" />
+                <span>Dedicated Cloud Platforms ({matchingPlatforms.length})</span>
+              </div>
+              <div className="space-y-1.5">
+                {matchingPlatforms.map(p => (
+                  <button
+                    key={p.id}
+                    onClick={() => {
+                      setIsSearchOpen(false);
+                      const el = document.getElementById(`section-${p.id}`) || document.getElementById('platforms-container');
+                      el?.scrollIntoView({ behavior: 'smooth' });
+                    }}
+                    className="w-full text-left p-3 rounded-lg bg-slate-950 hover:bg-slate-800 border border-slate-800/80 flex items-center justify-between group transition-colors"
+                  >
+                    <div>
+                      <div className="font-semibold text-white group-hover:text-cyan-300">
+                        {p.title}
+                      </div>
+                      <div className="text-[11px] text-slate-400 font-mono">
+                        {p.platform} · {p.badge}
+                      </div>
+                    </div>
+                    <ArrowRight className="w-3.5 h-3.5 text-slate-500 group-hover:text-cyan-400 transition-transform group-hover:translate-x-0.5" />
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Architecture Diagrams Matches */}
+          {matchingDiagrams.length > 0 && (
+            <div className="space-y-2">
+              <div className="text-[11px] font-semibold uppercase tracking-wider text-cyan-400 flex items-center gap-1.5">
+                <Layers className="w-3.5 h-3.5" />
+                <span>Architecture Diagrams ({matchingDiagrams.length})</span>
+              </div>
+              <div className="space-y-1.5">
+                {matchingDiagrams.map(d => (
+                  <button
+                    key={d.id}
+                    onClick={() => {
+                      setIsSearchOpen(false);
+                      setSelectedDiagram(d);
+                      const el = document.getElementById('diagrams');
+                      el?.scrollIntoView({ behavior: 'smooth' });
+                    }}
+                    className="w-full text-left p-3 rounded-lg bg-slate-950 hover:bg-slate-800 border border-slate-800/80 flex items-center justify-between group transition-colors"
+                  >
+                    <div>
+                      <div className="font-semibold text-white group-hover:text-cyan-300">
+                        {d.title}
+                      </div>
+                      <div className="text-[11px] text-slate-400 font-mono">
+                        {d.provider} · {d.category}
+                      </div>
+                    </div>
+                    <ArrowRight className="w-3.5 h-3.5 text-slate-500 group-hover:text-cyan-400 transition-transform group-hover:translate-x-0.5" />
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Tutorials & Articles Matches */}
+          {matchingTutorials.length > 0 && (
+            <div className="space-y-2">
+              <div className="text-[11px] font-semibold uppercase tracking-wider text-emerald-400 flex items-center gap-1.5">
+                <BookOpen className="w-3.5 h-3.5" />
+                <span>Tutorials & Articles ({matchingTutorials.length})</span>
+              </div>
+              <div className="space-y-1.5">
+                {matchingTutorials.map(t => (
+                  <button
+                    key={t.id}
+                    onClick={() => {
+                      setIsSearchOpen(false);
+                      setSelectedTutorial(t);
+                    }}
+                    className="w-full text-left p-3 rounded-lg bg-slate-950 hover:bg-slate-800 border border-slate-800/80 flex items-center justify-between group transition-colors"
+                  >
+                    <div>
+                      <div className="font-semibold text-white group-hover:text-emerald-300">
+                        {t.title}
+                      </div>
+                      <div className="text-[11px] text-slate-400 font-mono">
+                        {t.type.toUpperCase()} · {t.provider} · {t.readTime}
+                      </div>
+                    </div>
+                    <ArrowRight className="w-3.5 h-3.5 text-slate-500 group-hover:text-emerald-400 transition-transform group-hover:translate-x-0.5" />
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Videos Matches */}
+          {matchingVideos.length > 0 && (
+            <div className="space-y-2">
+              <div className="text-[11px] font-semibold uppercase tracking-wider text-amber-400 flex items-center gap-1.5">
+                <Film className="w-3.5 h-3.5" />
+                <span>Video Masterclasses ({matchingVideos.length})</span>
+              </div>
+              <div className="space-y-1.5">
+                {matchingVideos.map(v => (
+                  <button
+                    key={v.id}
+                    onClick={() => {
+                      setIsSearchOpen(false);
+                      setSelectedVideo(v);
+                    }}
+                    className="w-full text-left p-3 rounded-lg bg-slate-950 hover:bg-slate-800 border border-slate-800/80 flex items-center justify-between group transition-colors"
+                  >
+                    <div>
+                      <div className="font-semibold text-white group-hover:text-amber-300">
+                        {v.title}
+                      </div>
+                      <div className="text-[11px] text-slate-400 font-mono">
+                        {v.provider} · {v.duration} · {v.category}
+                      </div>
+                    </div>
+                    <ArrowRight className="w-3.5 h-3.5 text-slate-500 group-hover:text-amber-400 transition-transform group-hover:translate-x-0.5" />
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Footer Shortcut Bar */}
+        <div className="px-4 py-2.5 border-t border-slate-800 bg-slate-950 flex items-center justify-between text-[11px] text-slate-500">
+          <span>Navigate with mouse or tap ESC to close</span>
+          <span className="font-mono">Global Search</span>
+        </div>
+      </div>
+    </div>
+  );
+};
