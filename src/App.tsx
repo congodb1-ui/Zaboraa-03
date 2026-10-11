@@ -18,6 +18,7 @@ import { WorkbenchHubPage } from './pages/tools/WorkbenchHubPage';
 import { NodeSizingToolPage } from './pages/tools/NodeSizingToolPage';
 import { RVToolsAnalyzerPage } from './pages/tools/RVToolsAnalyzerPage';
 import { AriaNetworksToolPage } from './pages/tools/AriaNetworksToolPage';
+import { NutanixNC2AssessmentPage } from './pages/tools/NutanixNC2AssessmentPage';
 import { DRPlannerPage } from './pages/tools/DRPlannerPage';
 import { DesignGeneratorPage } from './pages/tools/DesignGeneratorPage';
 import { BlueprintsPage } from './pages/BlueprintsPage';
@@ -35,7 +36,8 @@ import {
   LogOut,
   Eye,
   EyeOff,
-  FolderGit2
+  FolderGit2,
+  Sparkles
 } from 'lucide-react';
 import { GOOGLE_DRIVE_CONFIG } from './data/mediaAssets';
 
@@ -63,10 +65,30 @@ const MainLayout: React.FC = () => {
 
   return (
     <div
+      data-ui-theme={siteConfig.adminSettings?.themePreset || 'default'}
+      data-ui-density={siteConfig.adminSettings?.layoutDensity || 'balanced'}
+      data-ui-header={siteConfig.adminSettings?.headerStyle || 'glass'}
+      data-ui-pattern={siteConfig.adminSettings?.backgroundPattern || 'tech-grid'}
       className={`min-h-screen ${
         theme === 'dark' ? 'bg-slate-950 text-slate-100' : 'bg-slate-50 text-slate-900'
       } theme-root flex flex-col font-sans selection:bg-cyan-500/30 selection:text-cyan-200`}
     >
+      {/* Site-wide Announcement Banner (Admin Configurable) */}
+      {siteConfig.adminSettings?.announcementBannerEnabled && (
+        <div className="bg-gradient-to-r from-emerald-950 via-slate-900 to-emerald-950 border-b border-emerald-500/40 px-4 py-2 text-center text-xs font-semibold text-emerald-200 flex items-center justify-center gap-2">
+          <Sparkles className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+          <span>{siteConfig.adminSettings.announcementText}</span>
+          {siteConfig.adminSettings.announcementLink && (
+            <a
+              href={siteConfig.adminSettings.announcementLink}
+              className="underline text-cyan-300 hover:text-white font-mono ml-1"
+            >
+              Explore Tool &rarr;
+            </a>
+          )}
+        </div>
+      )}
+
       {/* Admin Mode Top Status Bar (Only visible when Admin is logged in) */}
       {isAdmin && (
         <div className="sticky top-0 z-50 bg-emerald-950/95 border-b border-emerald-500/40 px-4 py-2 text-xs font-mono text-emerald-200 flex items-center justify-between backdrop-blur-md shadow-lg">
@@ -145,6 +167,7 @@ const MainLayout: React.FC = () => {
           <Route path="/tools" element={<WorkbenchHubPage />} />
           <Route path="/tools/sizing" element={<NodeSizingToolPage />} />
           <Route path="/tools/rvtools-analyzer" element={<RVToolsAnalyzerPage />} />
+          <Route path="/tools/nutanix-nc2-assessment" element={<NutanixNC2AssessmentPage />} />
           <Route path="/tools/aria-networks" element={<AriaNetworksToolPage />} />
           <Route path="/tools/dr-planner" element={<DRPlannerPage />} />
           <Route path="/tools/design-generator" element={<DesignGeneratorPage />} />

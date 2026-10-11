@@ -1,8 +1,8 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { SiteConfig, ArchitectureDiagram, VideoItem, TutorialArticle, ServicePillar, CaseStudy, PhotoStyle, PlatformShowcase, ArchitectureDesignItem, WatermarkConfig } from '../types/siteData';
+import { SiteConfig, ArchitectureDiagram, VideoItem, TutorialArticle, ServicePillar, CaseStudy, PhotoStyle, PlatformShowcase, ArchitectureDesignItem, WatermarkConfig, AdminSettings } from '../types/siteData';
 import { INITIAL_SITE_DATA } from '../data/initialData';
 
-const STORAGE_KEY = 'zaboraa_site_config_v7';
+const STORAGE_KEY = 'zaboraa_site_config_v8';
 const THEME_STORAGE_KEY = 'zaboraa_theme_mode';
 
 function cleanOldStorageKeys() {
@@ -53,6 +53,7 @@ interface CustomizationContextType {
   verifyAdminPasscode: (passcode: string) => boolean;
   updateWatermarkConfig: (cfg: Partial<WatermarkConfig>) => void;
   updateEnableHotspots: (enabled: boolean) => void;
+  updateAdminSettings: (cfg: Partial<AdminSettings>) => void;
   isCustomizerOpen: boolean;
   setIsCustomizerOpen: (open: boolean) => void;
   isPhotoEditorOpen: boolean;
@@ -147,16 +148,20 @@ export const CustomizationProvider: React.FC<{ children: React.ReactNode }> = ({
           if (!merged.founder.photoStyle) {
             merged.founder.photoStyle = INITIAL_SITE_DATA.founder.photoStyle;
           }
-          // If fewer than 7 platforms, missing aria, using old fallbacks, or missing subsections, upgrade to complete initial set
+          // If fewer than 8 platforms, missing nutanix or aria, using old fallbacks, or missing subsections, upgrade to complete initial set
           const hasOldFallbacks = merged.platformShowcases?.some((p: any) =>
             p.designs?.some((d: any) => d.imageUrl?.includes('architecture_avs_mesh') && p.id !== 'avs')
           );
           const hasAria = merged.platformShowcases?.some((p: any) => p.id === 'aria');
+          const hasNutanix = merged.platformShowcases?.some((p: any) => p.id === 'nutanix-nc2-azure');
           const hasIncompleteDesigns = merged.platformShowcases?.some((p: any) =>
             !p.designs || p.designs.length < 3 || p.designs.some((d: any) => !d.id || !d.imageUrl)
           );
-          if (!merged.platformShowcases || merged.platformShowcases.length < 7 || hasOldFallbacks || !hasAria || hasIncompleteDesigns) {
+          if (!merged.platformShowcases || merged.platformShowcases.length < 8 || hasOldFallbacks || !hasAria || !hasNutanix || hasIncompleteDesigns) {
             merged.platformShowcases = INITIAL_SITE_DATA.platformShowcases;
+          }
+          if (!merged.adminSettings) {
+            merged.adminSettings = INITIAL_SITE_DATA.adminSettings;
           }
           return sanitizeImagePaths(merged);
         }
@@ -212,6 +217,16 @@ export const CustomizationProvider: React.FC<{ children: React.ReactNode }> = ({
     }));
   };
 
+  const updateAdminSettings = (cfg: Partial<AdminSettings>) => {
+    setSiteConfig(prev => ({
+      ...prev,
+      adminSettings: {
+        ...(prev.adminSettings || INITIAL_SITE_DATA.adminSettings!),
+        ...cfg
+      }
+    }));
+  };
+
   const [isCustomizerOpen, setIsCustomizerOpen] = useState(false);
   const [isPhotoEditorOpen, setIsPhotoEditorOpen] = useState(false);
   const [activeEditPlatformId, setActiveEditPlatformId] = useState<string | null>(null);
@@ -244,7 +259,16 @@ export const CustomizationProvider: React.FC<{ children: React.ReactNode }> = ({
       root.classList.remove('light-high-contrast');
       root.classList.add('dark');
     }
-  }, [theme]);
+
+    const currentTheme = siteConfig.adminSettings?.themePreset || 'default';
+    const currentDensity = siteConfig.adminSettings?.layoutDensity || 'balanced';
+    const currentHeader = siteConfig.adminSettings?.headerStyle || 'glass';
+    const currentPattern = siteConfig.adminSettings?.backgroundPattern || 'tech-grid';
+    root.setAttribute('data-ui-theme', currentTheme);
+    root.setAttribute('data-ui-density', currentDensity);
+    root.setAttribute('data-ui-header', currentHeader);
+    root.setAttribute('data-ui-pattern', currentPattern);
+  }, [theme, siteConfig.adminSettings]);
 
   // Sync to localStorage with quota protection and fallback
   useEffect(() => {
@@ -545,6 +569,7 @@ export const CustomizationProvider: React.FC<{ children: React.ReactNode }> = ({
         verifyAdminPasscode,
         updateWatermarkConfig,
         updateEnableHotspots,
+        updateAdminSettings,
         isCustomizerOpen,
         setIsCustomizerOpen,
         isPhotoEditorOpen,

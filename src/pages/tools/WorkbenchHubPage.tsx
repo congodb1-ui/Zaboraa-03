@@ -38,6 +38,22 @@ export const WorkbenchHubPage: React.FC = () => {
       ]
     },
     {
+      id: 'nutanix-nc2-assessment',
+      path: '/tools/nutanix-nc2-assessment',
+      icon: Cpu,
+      title: 'Nutanix NC2 on Azure Migration Assessment Engine',
+      subtitle: 'Dedicated AHV Compatibility, Move Pipeline & Azure Node Sizing',
+      badge: 'Dedicated NC2 Assessment',
+      accentColor: 'border-emerald-400/50 text-emerald-300 bg-emerald-950/30',
+      description: 'Dedicated assessment tool for transitioning enterprise VMware vSphere SDDC workloads to Nutanix Cloud Clusters (NC2) on Microsoft Azure bare-metal nodes (AN36, AN36P, AN64, AN100). Evaluates AHV VirtIO drivers, controller translation, and Distributed Storage Fabric (DSF) RF2/RF3 usable capacity.',
+      capabilities: [
+        'AHV Hypervisor inspection: VirtIO drivers, SCSI controllers, legacy E1000 vNICs, and HW versions',
+        'Nutanix NC2 on Azure bare-metal node (AN36, AN36P, AN64, AN100) cluster sizing engine',
+        'Distributed Storage Fabric (DSF) RF2/RF3 usable storage calculator with dedup & compression',
+        'Nutanix Move wave sequencing, cutover windows, and Flow Virtual Network subnet mapping'
+      ]
+    },
+    {
       id: 'aria-networks',
       path: '/tools/aria-networks',
       icon: Network,

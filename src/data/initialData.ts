@@ -12,6 +12,18 @@ export const INITIAL_SITE_DATA: SiteConfig = {
     opacity: 0.35,
     position: 'bottom-right'
   },
+  adminSettings: {
+    themePreset: 'default',
+    layoutDensity: 'balanced',
+    headerStyle: 'glass',
+    backgroundPattern: 'tech-grid',
+    announcementBannerEnabled: false,
+    announcementText: 'New: VMware to Nutanix NC2 on Azure Migration Assessment Engine is Live!',
+    announcementLink: '/tools/nutanix-nc2-assessment',
+    confidentialityClassification: 'CONFIDENTIAL // ARCHITECTURAL ASSESSMENT',
+    clientName: 'Enterprise Cloud Migration Assessment',
+    enableAuditTelemetry: true
+  },
   platformShowcases: [
     {
       id: 'avs',
@@ -509,6 +521,80 @@ export const INITIAL_SITE_DATA: SiteConfig = {
             { name: 'Rule Recommendation Engine', role: 'Policy Generator', details: 'Translates raw socket logs into optimal least-privilege Distributed Firewall rules.' },
             { name: 'Migration Wave Planner', role: 'Cutover Scheduler', details: 'Ranks application groups by network coupling to schedule optimal HCX migration batches.' },
             { name: 'NSX Policy Manager API', role: 'Enforcement Target', details: 'Receives and applies microsegmentation rules directly to VM vNIC distributed firewalls.' }
+          ]
+        }
+      ]
+    },
+    {
+      id: 'nutanix-nc2-azure',
+      platform: 'VMware SDDC to Nutanix NC2 on Azure',
+      title: 'VMware SDDC to Nutanix NC2 on Azure Architecture & Migration',
+      badge: 'Nutanix NC2 on Azure',
+      description: 'Enterprise architecture discipline and migration methodology for transitioning VMware vSphere SDDC workloads to Nutanix Cloud Clusters (NC2) on Microsoft Azure bare-metal infrastructure. Combines Nutanix AHV hypervisor, Distributed Storage Fabric (DSF), Flow Virtual Networking, and Nutanix Move cross-hypervisor migration.',
+      mediaType: 'image',
+      imageUrl: '/assets/images/nutanix_nc2_azure_architecture_1791687138119.jpg',
+      videoUrl: 'https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ',
+      videoDuration: '31:20',
+      keyDeliverables: [
+        'Dedicated Azure bare-metal node architecture (AN36, AN36P, AN64, AN100) running native Nutanix AHV and CVM storage fabric',
+        'Direct Azure Virtual Network (VNet) flow integration without overlay encapsulation or nested virtualization penalties',
+        'Nutanix Move automated cross-hypervisor replication with automated VirtIO injection and near-zero cutover downtime',
+        'Distributed Storage Fabric (DSF) with RF2/RF3 resilience, inline deduplication/compression, and Leap multi-region DR'
+      ],
+      techTags: ['Nutanix NC2 on Azure', 'Nutanix AHV Hypervisor', 'Nutanix Move Engine', 'Flow Virtual Networking', 'Distributed Storage Fabric (DSF)', 'Azure Bare-Metal AN36/AN64'],
+      designs: [
+        {
+          id: 'nc2-design-1',
+          title: 'Azure Bare-Metal Node Architecture & Flow Virtual Networking',
+          badge: 'Bare-Metal & Flow VNet',
+          imageUrl: '/assets/images/nutanix_nc2_azure_architecture_1791687138119.jpg',
+          description: 'Deploying Nutanix AOS and AHV directly on Azure bare-metal nodes with native Azure Virtual Network (VNet) fabric integration, eliminating nested virtualization performance penalties while preserving sub-millisecond inter-VM latency.',
+          detailedSpecs: [
+            'Azure Bare-Metal Node SKUs: AN36 (36c/72t, 768GB RAM), AN36P (1.5TB RAM), AN64 (64c/128t, 1.5TB RAM), AN100 (104c/208t, 2TB RAM)',
+            'Native Azure Virtual Network (VNet) flow integration assigning native Azure NICs and IPs directly to Nutanix AHV user VMs',
+            'Flow Virtual Networking (VPC, overlay subnets, floating IPs, and inter-cluster routing) for multi-tenant isolation',
+            'Azure ExpressRoute & FastPath direct hybrid interconnectivity linking on-premises VMware data centers to NC2 cluster'
+          ],
+          components: [
+            { name: 'Azure Bare-Metal Host', role: 'Compute Node', details: 'Dual-socket Intel Xeon physical host partitioned with hardware-assisted virtualization and NVMe flash.' },
+            { name: 'Nutanix CVM (Controller VM)', role: 'Storage & Control Plane', details: 'Directly manages local NVMe SSDs and clusters into global Distributed Storage Fabric across all nodes.' },
+            { name: 'Flow Virtual Networking', role: 'SDN & Overlay Fabric', details: 'Provides microsegmentation, VPC peering, and seamless layer 2 broadcast domain management.' }
+          ]
+        },
+        {
+          id: 'nc2-design-2',
+          title: 'Nutanix Move Automated Cross-Hypervisor Migration Pipeline (vSphere to AHV)',
+          badge: 'Nutanix Move ESXi to AHV',
+          imageUrl: '/assets/images/nutanix_nc2_azure_architecture_1791687138119.jpg',
+          description: 'End-to-end automated cross-hypervisor migration engine capturing block-level changed data tracking from VMware ESXi / vCenter and streaming non-disruptive deltas into Nutanix AHV on Azure, injecting VirtIO drivers and converting disk controllers automatically.',
+          detailedSpecs: [
+            'Agentless changed block tracking (CBT) synchronization replicating terabytes of VMDK storage in the background',
+            'Automatic VirtIO driver injection and disk controller translation (PVSCSI/LSI to VirtIO-SCSI) during staging phase',
+            'Near-zero cutover window: Target VM is prepared in seconds; source VM is cleanly quiesced and network cutover executed',
+            'Flow Layer 2 Subnet Extension preserving source IP addresses during multi-wave application migrations without re-IPing'
+          ],
+          components: [
+            { name: 'Nutanix Move Appliance', role: 'Migration Orchestrator', details: 'Linux virtual appliance coordinating vCenter snapshots, data streaming, driver injection, and cutover.' },
+            { name: 'VirtIO Driver Injection Engine', role: 'OS Compatibility Tool', details: 'Prepares Windows and Linux guest operating systems for native AHV hardware acceleration.' },
+            { name: 'Flow L2 Gateway Agent', role: 'Subnet Stretch', details: 'Extends on-premises broadcast VLANs into Azure VNet without requiring manual default gateway changes.' }
+          ]
+        },
+        {
+          id: 'nc2-design-3',
+          title: 'Distributed Storage Fabric (DSF), Resiliency & Multi-Region BCDR',
+          badge: 'DSF RF2/RF3 & Leap DR',
+          imageUrl: '/assets/images/nutanix_nc2_azure_architecture_1791687138119.jpg',
+          description: 'Enterprise hyperconverged storage architecture with Replication Factor 2 (RF2) and Replication Factor 3 (RF3), inline deduplication, compression, erasure coding (EC-X), and automated disaster recovery orchestration with Nutanix Leap.',
+          detailedSpecs: [
+            'Distributed Storage Fabric (DSF) pooling all local Azure bare-metal NVMe SSDs into a single resilient datastore namespace',
+            'Configurable RF2 (tolerates 1 node failure) and RF3 (tolerates 2 simultaneous node failures) with automated data re-protection',
+            'Storage tiering and snapshot archival to Azure Blob Storage and Azure NetApp Files for cold data archiving',
+            'Nutanix Leap DR orchestration executing non-disruptive disaster recovery testing and automated cross-region failover'
+          ],
+          components: [
+            { name: 'DSF Storage Pool', role: 'Global Enterprise Storage', details: 'Distributes VM data blocks across all cluster nodes with metadata localized for low-latency IOPS.' },
+            { name: 'Nutanix Leap Engine', role: 'Disaster Recovery Orchestrator', details: 'Policy-based runbooks managing protection policies, recovery plans, and test bubble validation.' },
+            { name: 'Azure Blob Tiering Connector', role: 'Cold Data Archive', details: 'Automated policy engine moving stale snapshots to cost-efficient Azure Object Storage.' }
           ]
         }
       ]

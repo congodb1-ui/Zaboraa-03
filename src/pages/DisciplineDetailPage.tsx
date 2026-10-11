@@ -127,6 +127,15 @@ export const DisciplineDetailPage: React.FC = () => {
             <Calendar className="w-4 h-4" />
             <span>Book Technical Briefing for {platform.badge}</span>
           </button>
+          {platform.id === 'nutanix-nc2-azure' && (
+            <Link
+              to="/tools/nutanix-nc2-assessment"
+              className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-lg bg-emerald-400 hover:bg-emerald-300 text-slate-950 font-bold text-xs transition-all shadow-lg hover:scale-105 cursor-pointer"
+            >
+              <Cpu className="w-4 h-4" />
+              <span>Launch Dedicated Nutanix NC2 Assessment</span>
+            </Link>
+          )}
           <Link
             to="/tools"
             className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-xs font-semibold transition-colors"

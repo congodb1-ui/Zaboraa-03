@@ -41,14 +41,18 @@ export const HomePage: React.FC = () => {
               <p className="text-sm sm:text-base text-slate-300 leading-relaxed">
                 Run production-grade calculations before initiating hyperscaler procurement. Size nodes with external decoupled storage (ANF / FSx), parse real RVTools spreadsheets, discover East-West application flows with Aria Networks (vRNI), calculate DR replication WAN bandwidth, and generate validated hybrid blueprints.
               </p>
-              <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 pt-2 text-xs font-mono text-slate-300">
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 pt-2 text-xs font-mono text-slate-300">
                 <div className="flex items-center gap-1.5">
-                  <Cpu className="w-4 h-4 text-cyan-400" />
+                  <HardDrive className="w-4 h-4 text-cyan-400" />
                   <span>Node Sizing</span>
                 </div>
                 <div className="flex items-center gap-1.5">
                   <FileSpreadsheet className="w-4 h-4 text-emerald-400" />
                   <span>RVTools Parser</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <Cpu className="w-4 h-4 text-emerald-300" />
+                  <span>Nutanix NC2</span>
                 </div>
                 <div className="flex items-center gap-1.5">
                   <Activity className="w-4 h-4 text-cyan-300" />

@@ -202,6 +202,20 @@ export const Navbar: React.FC = () => {
                   </div>
                 </Link>
                 <Link
+                  to="/tools/nutanix-nc2-assessment"
+                  className="flex items-start gap-2.5 px-3 py-2 rounded-lg hover:bg-slate-900 transition-colors group"
+                >
+                  <Cpu className="w-4 h-4 text-emerald-300 shrink-0 mt-0.5" />
+                  <div>
+                    <div className="text-xs font-bold text-slate-200 group-hover:text-emerald-300">
+                      Nutanix NC2 on Azure Assessment
+                    </div>
+                    <div className="text-[10px] text-slate-400">
+                      AHV VirtIO audit & Azure bare-metal node sizing
+                    </div>
+                  </div>
+                </Link>
+                <Link
                   to="/tools/aria-networks"
                   className="flex items-start gap-2.5 px-3 py-2 rounded-lg hover:bg-slate-900 transition-colors group"
                 >
@@ -437,7 +451,7 @@ export const Navbar: React.FC = () => {
               onClick={() => setMobileMenuOpen(false)}
               className="block px-3 py-2 rounded-lg text-sm font-semibold text-cyan-400 hover:bg-slate-900"
             >
-              Engineering Workbench (5 Tools)
+              Engineering Workbench (6 Tools)
             </NavLink>
             <div className="pl-4 space-y-1 text-xs font-medium text-slate-400">
               <Link to="/tools/sizing" onClick={() => setMobileMenuOpen(false)} className="block py-1 hover:text-cyan-300">
@@ -445,6 +459,9 @@ export const Navbar: React.FC = () => {
               </Link>
               <Link to="/tools/rvtools-analyzer" onClick={() => setMobileMenuOpen(false)} className="block py-1 hover:text-emerald-300">
                 · RVTools Readiness Engine
+              </Link>
+              <Link to="/tools/nutanix-nc2-assessment" onClick={() => setMobileMenuOpen(false)} className="block py-1 hover:text-emerald-300">
+                · Nutanix NC2 on Azure Assessment
               </Link>
               <Link to="/tools/aria-networks" onClick={() => setMobileMenuOpen(false)} className="block py-1 hover:text-cyan-300">
                 · Aria Networks & DFW Planner

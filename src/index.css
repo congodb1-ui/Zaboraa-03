@@ -90,3 +90,143 @@ html.light-high-contrast ::-webkit-scrollbar-thumb {
   background: #94a3b8;
 }
 
+/* =========================================================================
+   ADMIN UI THEME 1: HYPER-CLOUD MIDNIGHT (DEFAULT)
+   Default styles remain intact so the current UI DOES NOT CHANGE!
+   ========================================================================= */
+
+/* =========================================================================
+   ADMIN UI THEME 2: NUTANIX CLOUD PRISM (TEAL & GRAPHITE)
+   ========================================================================= */
+[data-ui-theme="nutanix"] {
+  color-scheme: dark;
+}
+[data-ui-theme="nutanix"] body,
+[data-ui-theme="nutanix"] .theme-root {
+  background-color: #0a0e12 !important;
+  color: #e2e8f0 !important;
+}
+[data-ui-theme="nutanix"] .bg-slate-950 {
+  background-color: #070a0d !important;
+}
+[data-ui-theme="nutanix"] .bg-slate-900 {
+  background-color: #10161c !important;
+}
+[data-ui-theme="nutanix"] .border-slate-800,
+[data-ui-theme="nutanix"] .border-slate-800\/80,
+[data-ui-theme="nutanix"] .border-slate-700 {
+  border-color: #1b252e !important;
+}
+[data-ui-theme="nutanix"] .text-cyan-400,
+[data-ui-theme="nutanix"] .text-cyan-300 {
+  color: #00d2aa !important;
+}
+[data-ui-theme="nutanix"] .bg-cyan-400,
+[data-ui-theme="nutanix"] .bg-cyan-500 {
+  background-color: #00d2aa !important;
+  color: #070a0d !important;
+}
+[data-ui-theme="nutanix"] .border-cyan-500\/40,
+[data-ui-theme="nutanix"] .border-cyan-500\/30 {
+  border-color: rgba(0, 210, 170, 0.4) !important;
+}
+[data-ui-theme="nutanix"] .bg-cyan-950\/80,
+[data-ui-theme="nutanix"] .bg-cyan-950\/60,
+[data-ui-theme="nutanix"] .bg-cyan-950\/40 {
+  background-color: rgba(0, 50, 40, 0.8) !important;
+}
+
+/* =========================================================================
+   ADMIN UI THEME 3: AZURE ENTERPRISE COBALT (ROYAL BLUE & SLATE)
+   ========================================================================= */
+[data-ui-theme="azure"] {
+  color-scheme: dark;
+}
+[data-ui-theme="azure"] body,
+[data-ui-theme="azure"] .theme-root {
+  background-color: #050a12 !important;
+  color: #e2e8f0 !important;
+}
+[data-ui-theme="azure"] .bg-slate-950 {
+  background-color: #03060b !important;
+}
+[data-ui-theme="azure"] .bg-slate-900 {
+  background-color: #0a1320 !important;
+}
+[data-ui-theme="azure"] .border-slate-800,
+[data-ui-theme="azure"] .border-slate-800\/80,
+[data-ui-theme="azure"] .border-slate-700 {
+  border-color: #132438 !important;
+}
+[data-ui-theme="azure"] .text-cyan-400,
+[data-ui-theme="azure"] .text-cyan-300 {
+  color: #38bdf8 !important;
+}
+[data-ui-theme="azure"] .bg-cyan-400,
+[data-ui-theme="azure"] .bg-cyan-500 {
+  background-color: #0078d4 !important;
+  color: #ffffff !important;
+}
+[data-ui-theme="azure"] .border-cyan-500\/40,
+[data-ui-theme="azure"] .border-cyan-500\/30 {
+  border-color: rgba(0, 120, 212, 0.4) !important;
+}
+
+/* =========================================================================
+   ADMIN UI THEME 4: OBSIDIAN MATRIX TERMINAL (CYBER HIGH-DENSITY)
+   ========================================================================= */
+[data-ui-theme="terminal"] {
+  color-scheme: dark;
+}
+[data-ui-theme="terminal"] body,
+[data-ui-theme="terminal"] .theme-root {
+  background-color: #040507 !important;
+  color: #d1fae5 !important;
+}
+[data-ui-theme="terminal"] .bg-slate-950 {
+  background-color: #020304 !important;
+}
+[data-ui-theme="terminal"] .bg-slate-900 {
+  background-color: #080a0e !important;
+}
+[data-ui-theme="terminal"] .border-slate-800,
+[data-ui-theme="terminal"] .border-slate-800\/80,
+[data-ui-theme="terminal"] .border-slate-700 {
+  border-color: #111923 !important;
+}
+[data-ui-theme="terminal"] .text-cyan-400,
+[data-ui-theme="terminal"] .text-cyan-300 {
+  color: #34d399 !important;
+}
+[data-ui-theme="terminal"] .bg-cyan-400,
+[data-ui-theme="terminal"] .bg-cyan-500 {
+  background-color: #10b981 !important;
+  color: #020304 !important;
+}
+
+/* Density Overrides */
+[data-ui-density="compact"] .p-6 {
+  padding: 1.125rem !important;
+}
+[data-ui-density="compact"] .gap-6 {
+  gap: 1rem !important;
+}
+[data-ui-density="executive"] .p-6 {
+  padding: 2rem !important;
+}
+
+/* Background Patterns */
+[data-ui-pattern="dot-matrix"] .theme-root {
+  background-image: radial-gradient(rgba(148, 163, 184, 0.15) 1px, transparent 1px) !important;
+  background-size: 20px 20px !important;
+}
+[data-ui-pattern="clean-minimal"] .theme-root {
+  background-image: none !important;
+}
+[data-ui-pattern="blueprint-glow"] .theme-root {
+  background-image: radial-gradient(circle at 50% 0%, rgba(14, 165, 233, 0.12), transparent 60%),
+                    linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+                    linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px) !important;
+  background-size: 100% 100%, 32px 32px, 32px 32px !important;
+}
+

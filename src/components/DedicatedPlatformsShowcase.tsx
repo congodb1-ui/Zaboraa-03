@@ -101,6 +101,15 @@ export const DedicatedPlatformsShowcase: React.FC = () => {
       sectionTag: 'DEDICATED SECTION 07',
       accentColor: 'text-indigo-400',
       accentHex: '#818cf8'
+    },
+    'VMware SDDC to Nutanix NC2 on Azure': {
+      icon: <Server className="w-5 h-5 text-emerald-400" />,
+      colorBadge: 'border-emerald-500/40 text-emerald-300 bg-emerald-950/60',
+      borderColor: 'border-emerald-500/20 hover:border-emerald-500/40',
+      gradientBg: 'from-emerald-950/20 via-slate-900/60 to-slate-900/40',
+      sectionTag: 'DEDICATED SECTION 08',
+      accentColor: 'text-emerald-400',
+      accentHex: '#10b981'
     }
   };
 

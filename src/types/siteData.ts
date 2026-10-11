@@ -159,9 +159,27 @@ export interface ArchitectureDesignItem {
   components?: { name: string; role: string; details: string }[];
 }
 
+export type ThemePreset = 'default' | 'nutanix' | 'azure' | 'terminal';
+export type LayoutDensity = 'balanced' | 'compact' | 'executive';
+export type HeaderStyle = 'glass' | 'solid' | 'blueprint';
+export type BackgroundPattern = 'tech-grid' | 'dot-matrix' | 'clean-minimal' | 'blueprint-glow';
+
+export interface AdminSettings {
+  themePreset: ThemePreset;
+  layoutDensity: LayoutDensity;
+  headerStyle: HeaderStyle;
+  backgroundPattern: BackgroundPattern;
+  announcementBannerEnabled: boolean;
+  announcementText: string;
+  announcementLink: string;
+  confidentialityClassification: string;
+  clientName: string;
+  enableAuditTelemetry: boolean;
+}
+
 export interface PlatformShowcase {
-  id: string; // 'avs', 'gcve', 'vmc-dr', 'nsx', 'hcx', 'srm', 'aria'
-  platform: 'Azure VMware Solution' | 'GCVE' | 'VMC on AWS Migration & DR' | 'NSX' | 'VMware HCX' | 'VMware Site Recovery Manager' | 'VMware Aria Operations for Networks';
+  id: string; // 'avs', 'gcve', 'vmc-dr', 'nsx', 'hcx', 'srm', 'aria', 'nutanix-nc2-azure'
+  platform: 'Azure VMware Solution' | 'GCVE' | 'VMC on AWS Migration & DR' | 'NSX' | 'VMware HCX' | 'VMware Site Recovery Manager' | 'VMware Aria Operations for Networks' | 'VMware SDDC to Nutanix NC2 on Azure';
   title: string;
   badge: string;
   description: string;
@@ -197,6 +215,7 @@ export interface SiteConfig {
   enableHotspots?: boolean; // Top-level admin setting: globally enable or disable interactive hotspots across all diagrams
   featuredVideoId?: string;
   watermark?: WatermarkConfig;
+  adminSettings?: AdminSettings;
   platformShowcases: PlatformShowcase[];
   founder: {
     name: string;
