@@ -4,7 +4,8 @@ import { KnowledgeBaseSection } from '../components/KnowledgeBaseSection';
 import { TutorialsAndArticles } from '../components/TutorialsAndArticles';
 import { VideoHub } from '../components/VideoHub';
 import { FeaturedVideoSection } from '../components/FeaturedVideoSection';
-import { BookOpen, Film, Layers, FileText, Search, Sparkles } from 'lucide-react';
+import { NutanixArchitectureDeepDiveSection } from '../components/NutanixArchitectureDeepDiveSection';
+import { BookOpen, Film, Layers, FileText, Search, Sparkles, Cpu } from 'lucide-react';
 import { useCustomization } from '../context/CustomizationContext';
 
 export const ResourcesPage: React.FC = () => {
@@ -12,11 +13,13 @@ export const ResourcesPage: React.FC = () => {
   const { setIsSearchOpen } = useCustomization();
 
   // Tab state derived from URL or local state
-  const [activeTab, setActiveTab] = useState<'all' | 'kb' | 'tutorials' | 'videos'>('all');
+  const [activeTab, setActiveTab] = useState<'all' | 'nutanix-arch' | 'kb' | 'tutorials' | 'videos'>('all');
 
   useEffect(() => {
     const path = location.pathname.toLowerCase();
-    if (path.includes('/kb')) {
+    if (path.includes('/nutanix') || path.includes('/architecture')) {
+      setActiveTab('nutanix-arch');
+    } else if (path.includes('/kb')) {
       setActiveTab('kb');
     } else if (path.includes('/tutorials')) {
       setActiveTab('tutorials');
@@ -39,7 +42,7 @@ export const ResourcesPage: React.FC = () => {
             Knowledge Hub & Engineering Resources
           </h1>
           <p className="text-sm sm:text-base text-slate-300 leading-relaxed">
-            Battle-tested runbooks, deep-dive software guides, automation scripts, and video masterclasses curated by Lead Principal Architect Wasim Sayyed.
+            Battle-tested runbooks, architectural blueprints, software guides, downloadable whitepaper bundles, and video masterclasses curated by Lead Principal Architect Wasim Sayyed.
           </p>
         </div>
 
@@ -64,6 +67,17 @@ export const ResourcesPage: React.FC = () => {
           }`}
         >
           All Resources
+        </button>
+        <button
+          onClick={() => setActiveTab('nutanix-arch')}
+          className={`px-4 py-2 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
+            activeTab === 'nutanix-arch'
+              ? 'bg-cyan-500 text-slate-950 font-bold shadow-md'
+              : 'bg-slate-900 border border-slate-800 text-slate-300 hover:text-white'
+          }`}
+        >
+          <Cpu className="w-3.5 h-3.5 text-cyan-400" />
+          <span>Nutanix NC2 Architecture & Whitepapers</span>
         </button>
         <button
           onClick={() => setActiveTab('kb')}
@@ -102,6 +116,12 @@ export const ResourcesPage: React.FC = () => {
 
       {/* Tab Content Rendering */}
       <div className="space-y-16">
+        {(activeTab === 'all' || activeTab === 'nutanix-arch') && (
+          <div id="nutanix-architecture-section">
+            <NutanixArchitectureDeepDiveSection />
+          </div>
+        )}
+
         {(activeTab === 'all' || activeTab === 'kb') && (
           <div id="kb-section">
             <KnowledgeBaseSection />

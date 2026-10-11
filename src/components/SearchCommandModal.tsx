@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCustomization } from '../context/CustomizationContext';
-import { Search, X, Layers, BookOpen, Film, Server, ArrowRight, Cpu, HardDrive, FileSpreadsheet, ShieldAlert } from 'lucide-react';
+import { Search, X, Layers, BookOpen, Film, Server, ArrowRight, Cpu, HardDrive, FileSpreadsheet, ShieldAlert, History, Trash2 } from 'lucide-react';
+
+const RECENT_SEARCHES_KEY = 'zaboraa_recent_searches_v1';
 
 export const SearchCommandModal: React.FC = () => {
   const navigate = useNavigate();
@@ -15,6 +17,17 @@ export const SearchCommandModal: React.FC = () => {
   } = useCustomization();
 
   const [query, setQuery] = useState('');
+  const [recentSearches, setRecentSearches] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem(RECENT_SEARCHES_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) return parsed.slice(0, 5);
+      }
+    } catch {}
+    return ['Nutanix NC2', 'Bare-Metal Azure', 'RVTools Analyzer', 'DR Planner', 'NSX-T Microseg'];
+  });
+
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -24,6 +37,38 @@ export const SearchCommandModal: React.FC = () => {
       setQuery('');
     }
   }, [isSearchOpen]);
+
+  const saveRecentSearch = (searchQuery: string) => {
+    const clean = searchQuery.trim();
+    if (!clean) return;
+    setRecentSearches(prev => {
+      const filtered = prev.filter(q => q.toLowerCase() !== clean.toLowerCase());
+      const updated = [clean, ...filtered].slice(0, 5);
+      try {
+        localStorage.setItem(RECENT_SEARCHES_KEY, JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
+  };
+
+  const clearRecentSearches = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setRecentSearches([]);
+    try {
+      localStorage.removeItem(RECENT_SEARCHES_KEY);
+    } catch {}
+  };
+
+  const handleSelectRecent = (searchTerm: string) => {
+    setQuery(searchTerm);
+    saveRecentSearch(searchTerm);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter' && query.trim()) {
+      saveRecentSearch(query.trim());
+    }
+  };
 
   if (!isSearchOpen) return null;
 
@@ -86,6 +131,7 @@ export const SearchCommandModal: React.FC = () => {
             type="text"
             value={query}
             onChange={e => setQuery(e.target.value)}
+            onKeyDown={handleKeyDown}
             placeholder="Search tools, platforms, architecture diagrams, runbooks..."
             className="w-full bg-transparent text-sm text-white placeholder-slate-500 focus:outline-none"
           />
@@ -107,6 +153,41 @@ export const SearchCommandModal: React.FC = () => {
 
         {/* Results List */}
         <div className="overflow-y-auto p-4 space-y-5 flex-1 text-xs">
+          {/* Recent Searches Persisted List */}
+          {recentSearches.length > 0 && !query && (
+            <div className="p-3 rounded-xl bg-slate-950/70 border border-slate-800 space-y-2">
+              <div className="flex items-center justify-between text-slate-400">
+                <span className="font-semibold text-slate-300 flex items-center gap-1.5 font-mono uppercase text-[11px]">
+                  <History className="w-3.5 h-3.5 text-cyan-400" />
+                  <span>Recent Searches ({recentSearches.length})</span>
+                </span>
+                <button
+                  type="button"
+                  onClick={clearRecentSearches}
+                  className="text-[10px] text-slate-500 hover:text-rose-400 flex items-center gap-1 cursor-pointer transition-colors"
+                  title="Clear search history"
+                >
+                  <Trash2 className="w-3 h-3" />
+                  <span>Clear History</span>
+                </button>
+              </div>
+
+              <div className="flex flex-wrap gap-2 pt-0.5">
+                {recentSearches.map((term, idx) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => handleSelectRecent(term)}
+                    className="px-2.5 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-cyan-300 hover:text-white border border-slate-800 hover:border-cyan-500/50 transition-all font-mono text-xs flex items-center gap-1.5 cursor-pointer shadow-sm group"
+                  >
+                    <Search className="w-3 h-3 text-cyan-400/70 group-hover:text-cyan-300" />
+                    <span>{term}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
           {!hasResults && query && (
             <div className="text-center py-8 text-slate-500">
               No results found for "{query}". Try searching for "Sizing", "RVTools", "AVS", "HCX", "NSX-T", or "Storage".
@@ -120,7 +201,7 @@ export const SearchCommandModal: React.FC = () => {
                 {['Node Sizing', 'RVTools Parser', 'Azure AVS', 'NSX-T Microseg', 'HCX Migration', 'DR Calculator'].map(tag => (
                   <button
                     key={tag}
-                    onClick={() => setQuery(tag)}
+                    onClick={() => handleSelectRecent(tag)}
                     className="px-2.5 py-1 rounded bg-slate-950 hover:bg-slate-800 text-slate-300 border border-slate-800 transition-colors cursor-pointer"
                   >
                     {tag}

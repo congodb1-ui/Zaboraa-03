@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import * as XLSX from 'xlsx';
+import { jsPDF } from 'jspdf';
 import {
   ShieldAlert,
   Clock,
@@ -18,7 +19,8 @@ import {
   Server,
   Zap,
   FolderGit2,
-  ExternalLink
+  ExternalLink,
+  FileText
 } from 'lucide-react';
 import { GOOGLE_DRIVE_CONFIG } from '../../data/mediaAssets';
 
@@ -223,6 +225,214 @@ export const DRPlannerPage: React.FC = () => {
     XLSX.writeFile(wb, `Zaboraa_DR_Assessment_${engine.id.toUpperCase()}.xlsx`);
   };
 
+  // Export Formal Branded PDF report using jsPDF
+  const handleExportPdf = () => {
+    const doc = new jsPDF({
+      orientation: 'portrait',
+      unit: 'mm',
+      format: 'a4'
+    });
+
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+    const margin = 16;
+    let y = 18;
+
+    // Header Background Accent Bar
+    doc.setFillColor(15, 23, 42); // Slate 900
+    doc.rect(0, 0, pageWidth, 28, 'F');
+    doc.setFillColor(6, 182, 212); // Cyan 500
+    doc.rect(0, 27, pageWidth, 1.5, 'F');
+
+    // Brand Title
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(14);
+    doc.setTextColor(255, 255, 255);
+    doc.text('ZABORAA TECHNOLOGIES', margin, 12);
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8);
+    doc.setTextColor(148, 163, 184); // Slate 400
+    doc.text('ENTERPRISE DISASTER RECOVERY & BCDR ARCHITECTURAL DOSSIER', margin, 18);
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8);
+    doc.setTextColor(6, 182, 212);
+    doc.text(`DATE: ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}`, pageWidth - margin - 50, 12);
+    doc.setTextColor(148, 163, 184);
+    doc.text('ARCHITECT: Wasim Sayyed', pageWidth - margin - 50, 18);
+
+    y = 38;
+
+    // Title Section
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(16);
+    doc.setTextColor(15, 23, 42);
+    doc.text(`${engine.name} Resilience Assessment`, margin, y);
+    y += 6;
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9);
+    doc.setTextColor(71, 85, 105);
+    doc.text(`Deployment Strategy: ${deploymentStrategy.toUpperCase()} · Failover Network: ${failoverNetwork === 'stretchedL2' ? 'NSX-T Stretched Layer 2' : 'Routed Tier-1 Gateways'}`, margin, y);
+    y += 10;
+
+    // Executive Summary Box
+    doc.setFillColor(241, 245, 249); // Slate 100
+    doc.setDrawColor(203, 213, 225); // Slate 300
+    doc.roundedRect(margin, y, pageWidth - (margin * 2), 24, 2, 2, 'FD');
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(9);
+    doc.setTextColor(14, 116, 144); // Cyan 700
+    doc.text('EXECUTIVE HIGHLIGHTS & FINANCIAL RESILIENCY VERDICT', margin + 4, y + 6);
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8.5);
+    doc.setTextColor(30, 41, 59);
+    doc.text(
+      `Deploying ${engine.name} under a ${deploymentStrategy} model reduces standby compute host sprawl by ${calculations.hostReductionNodes} nodes (${calculations.hostReductionPercent}% reduction), slashing non-production OPEX by $${calculations.monthlyOpexSavings.toLocaleString()}/mo ($${calculations.threeYearTcoSavings.toLocaleString()} over 36 months).`,
+      margin + 4,
+      y + 12,
+      { maxWidth: pageWidth - (margin * 2) - 8 }
+    );
+    y += 32;
+
+    // KPI Metrics Matrix (4 Grid Cards)
+    const cardWidth = (pageWidth - (margin * 2) - 9) / 4;
+    const cardHeight = 22;
+
+    const kpis = [
+      { label: 'PROTECTED VMS', value: `${protectedVMs} VMs`, sub: `${protectedStorageTB} TB storage` },
+      { label: 'EFFECTIVE RPO', value: `${calculations.effectiveRpo} Minutes`, sub: calculations.isBandwidthAdequate ? 'Bandwidth PASS' : 'WAN constrained' },
+      { label: 'ESTIMATED RTO', value: `${calculations.totalEstimatedRtoMin} Minutes`, sub: 'Automated boot' },
+      { label: 'MONTHLY OPEX SAVINGS', value: `$${calculations.monthlyOpexSavings.toLocaleString()}`, sub: 'Host reduction' }
+    ];
+
+    kpis.forEach((kpi, i) => {
+      const cardX = margin + (i * (cardWidth + 3));
+      doc.setFillColor(248, 250, 252);
+      doc.setDrawColor(226, 232, 240);
+      doc.roundedRect(cardX, y, cardWidth, cardHeight, 1.5, 1.5, 'FD');
+
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(6.5);
+      doc.setTextColor(100, 116, 139);
+      doc.text(kpi.label, cardX + 3, y + 5);
+
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(10);
+      doc.setTextColor(15, 23, 42);
+      doc.text(kpi.value, cardX + 3, y + 12);
+
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(6.5);
+      doc.setTextColor(71, 85, 105);
+      doc.text(kpi.sub, cardX + 3, y + 18);
+    });
+
+    y += cardHeight + 10;
+
+    // Table 1: Technical Replication & Bandwidth Parameters
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(10);
+    doc.setTextColor(15, 23, 42);
+    doc.text('1. Replication Bandwidth & Storage Footprint Analysis', margin, y);
+    y += 5;
+
+    const techRows = [
+      ['Target RPO Window', `${calculations.effectiveRpo} Minutes`, 'Engine Baseline Constraints'],
+      ['Protected Storage Footprint', `${protectedStorageTB} TB`, 'Source VMDK Data Volume'],
+      ['Daily Data Change Rate', `${dailyChangeRatePercent}%`, 'Operational Delta Growth'],
+      ['24-Hour Transferred Volume', `${calculations.dailyChangeVolumeGB.toFixed(1)} GB`, 'Pre-compression replication payload'],
+      ['Effective Storage Throughput', `${calculations.requiredBandwidthMbps} Mbps`, 'Dedicated minimum WAN bandwidth'],
+      ['Configured WAN Circuit', `${wanBandwidthMbps} Mbps`, calculations.isBandwidthAdequate ? 'Adequate (SLA Passed)' : 'Undersized WAN warning'],
+      ['CDP Journal Storage Capacity', `${calculations.journalOverheadTB} TB`, `${journalRetentionDays}-day continuous checkpoint buffer`]
+    ];
+
+    doc.setFillColor(241, 245, 249);
+    doc.rect(margin, y, pageWidth - (margin * 2), 6, 'F');
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(7.5);
+    doc.setTextColor(51, 65, 85);
+    doc.text('TECHNICAL PARAMETER', margin + 3, y + 4);
+    doc.text('CALCULATED SPECIFICATION', margin + 70, y + 4);
+    doc.text('ARCHITECTURAL CONTEXT', margin + 120, y + 4);
+    y += 6;
+
+    techRows.forEach((row, idx) => {
+      if (idx % 2 === 1) {
+        doc.setFillColor(248, 250, 252);
+        doc.rect(margin, y, pageWidth - (margin * 2), 5.5, 'F');
+      }
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(7);
+      doc.setTextColor(30, 41, 59);
+      doc.text(row[0], margin + 3, y + 4);
+      doc.setFont('helvetica', 'bold');
+      doc.text(row[1], margin + 70, y + 4);
+      doc.setFont('helvetica', 'normal');
+      doc.text(row[2], margin + 120, y + 4);
+      y += 5.5;
+    });
+
+    y += 8;
+
+    // Table 2: Disaster Recovery Runbook Boot Sequence
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(10);
+    doc.setTextColor(15, 23, 42);
+    doc.text('2. Automated Disaster Recovery Runbook Sequencing', margin, y);
+    y += 5;
+
+    const runbookStages = [
+      ['Priority Group 1 (Core Identity)', 'Domain Controllers (AD/DNS), NTP, Vault, CA', 'Immediate boot (0m RTO)'],
+      ['Priority Group 2 (Database Tier)', 'SQL Server AlwaysOn, Oracle RAC, PostgreSQL replicas', '+3 min delay (storage validation)'],
+      ['Priority Group 3 (App/Middleware)', 'WebSphere, IIS, Tomcat, Kubernetes microservices', '+5 min delay (DB dependency)'],
+      ['Priority Group 4 (Web & Ingress)', 'Reverse proxies, Avi ALB, NSX Tier-1 virtual servers', '+2 min delay (health check PASS)']
+    ];
+
+    doc.setFillColor(241, 245, 249);
+    doc.rect(margin, y, pageWidth - (margin * 2), 6, 'F');
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(7.5);
+    doc.setTextColor(51, 65, 85);
+    doc.text('BOOT PRIORITY TIER', margin + 3, y + 4);
+    doc.text('TARGET WORKLOAD ASSETS', margin + 60, y + 4);
+    doc.text('ORCHESTRATION DELAY', margin + 130, y + 4);
+    y += 6;
+
+    runbookStages.forEach((stage, idx) => {
+      if (idx % 2 === 1) {
+        doc.setFillColor(248, 250, 252);
+        doc.rect(margin, y, pageWidth - (margin * 2), 5.5, 'F');
+      }
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(7);
+      doc.setTextColor(14, 116, 144);
+      doc.text(stage[0], margin + 3, y + 4);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(30, 41, 59);
+      doc.text(stage[1], margin + 60, y + 4);
+      doc.text(stage[2], margin + 130, y + 4);
+      y += 5.5;
+    });
+
+    y += 8;
+
+    // Sign-off Footer
+    doc.setDrawColor(203, 213, 225);
+    doc.line(margin, pageHeight - 18, pageWidth - margin, pageHeight - 18);
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7);
+    doc.setTextColor(100, 116, 139);
+    doc.text('CONFIDENTIAL // ISSUED FOR PRODUCTION ARCHITECTURE VALIDATION', margin, pageHeight - 13);
+    doc.text('Zaboraa Technologies · Cloud Infrastructure Engineering Practice', pageWidth - margin - 75, pageHeight - 13);
+
+    doc.save(`Zaboraa_Executive_DR_Report_${engine.id.toUpperCase()}.pdf`);
+  };
+
   // Pass to Design Generator
   const handleApplyToGenerator = () => {
     try {
@@ -261,20 +471,29 @@ export const DRPlannerPage: React.FC = () => {
               Model and compare VMware SRM, HPE Zerto CDP, JetStream DR, and Veeam. Compare Hot Standby vs. Pilot Light vs. Cold Object Storage host footprints, calculate CDP journal retention overhead, and evaluate NSX-T failover networking RTO impact.
             </p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <button
               onClick={handleExportExcel}
-              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-500/50 text-emerald-300 text-xs font-semibold cursor-pointer"
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-500/50 text-emerald-300 text-xs font-semibold cursor-pointer shadow-sm"
+              title="Export structured assessment data to Excel"
             >
               <Download className="w-3.5 h-3.5 text-emerald-400" />
               <span>Export .xlsx</span>
             </button>
             <button
+              onClick={handleExportPdf}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-cyan-950/80 hover:bg-cyan-900 border border-cyan-500/60 text-cyan-300 hover:text-white text-xs font-bold cursor-pointer shadow-sm transition-all"
+              title="Generate and download formal branded PDF report via jsPDF"
+            >
+              <FileText className="w-3.5 h-3.5 text-cyan-400" />
+              <span>Export to PDF</span>
+            </button>
+            <button
               onClick={() => setShowPrintModal(true)}
               className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-xs font-medium cursor-pointer"
             >
-              <Printer className="w-3.5 h-3.5 text-cyan-400" />
-              <span>Executive PDF</span>
+              <Printer className="w-3.5 h-3.5 text-slate-400" />
+              <span>Print Preview</span>
             </button>
             <button
               onClick={handleApplyToGenerator}

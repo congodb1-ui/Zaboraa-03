@@ -46,22 +46,27 @@ export const InteractiveHotspotImage: React.FC<InteractiveHotspotImageProps> = (
   // If disabled from top setting, it must not show hotspot anymore anywhere!
   const isGloballyEnabled = siteConfig.enableHotspots === true;
 
-  // Diagram-level state: by default it is hidden/disabled until user chooses to enable it
-  const [showHotspots, setShowHotspots] = useState<boolean>(false);
+  // Diagram-level state: default to true so components are immediately interactive and clickable
+  const [showHotspots, setShowHotspots] = useState<boolean>(true);
   const [selectedHotspot, setSelectedHotspot] = useState<DiagramHotspot | null>(null);
   const [hoveredHotspot, setHoveredHotspot] = useState<DiagramHotspot | null>(null);
   const [currentSrc, setCurrentSrc] = useState<string>(imageUrl);
+  
+  // Animation state (Ken Burns, scanline beam, hover zoom)
+  const [isAnimated, setIsAnimated] = useState<boolean>(
+    siteConfig.adminSettings?.imageAnimationsEnabled ?? true
+  );
   
   // Full-screen distraction-free state
   const [isFullScreen, setIsFullScreen] = useState<boolean>(false);
   const [zoomLevel, setZoomLevel] = useState<number>(1);
 
-  // When diagram or subsection changes, reset image source, zoom, and hide hotspots by default
+  // When diagram or subsection changes, reset image source, zoom, and keep hotspots active
   useEffect(() => {
     setCurrentSrc(imageUrl);
     setHoveredHotspot(null);
     setSelectedHotspot(null);
-    setShowHotspots(false);
+    setShowHotspots(true);
     setZoomLevel(1);
   }, [imageUrl, designId]);
 
@@ -226,9 +231,13 @@ export const InteractiveHotspotImage: React.FC<InteractiveHotspotImageProps> = (
 
   return (
     <div className={`space-y-3 ${className}`}>
-      {/* Standard In-Page Visual Canvas Container */}
-      <div className="relative aspect-video rounded-2xl overflow-hidden bg-slate-950 border border-slate-800 shadow-2xl group select-none">
-        {/* Base Architectural Image */}
+      {/* Standard In-Page Visual Canvas Container - Click anywhere to open in full screen */}
+      <div
+        onClick={handleOpenFullScreen}
+        className="relative aspect-video rounded-2xl overflow-hidden bg-slate-950 border border-slate-800 shadow-2xl group select-none cursor-pointer"
+        title="Click diagram to open in high-resolution full screen"
+      >
+        {/* Base Architectural Image with optional Ken Burns and hover zoom */}
         <img
           src={currentSrc}
           alt={title}
@@ -240,13 +249,26 @@ export const InteractiveHotspotImage: React.FC<InteractiveHotspotImageProps> = (
               setCurrentSrc('/src' + currentSrc);
             }
           }}
-          className="w-full h-full object-contain bg-slate-950 transition-transform duration-300 group-hover:scale-[1.003]"
+          className={`w-full h-full object-contain bg-slate-950 transition-transform duration-300 ${
+            isAnimated ? 'anim-kenburns anim-hover-zoom' : 'group-hover:scale-[1.01]'
+          }`}
         />
+
+        {/* Dynamic Scanline Beam Overlay when animation is active */}
+        {isAnimated && <div className="anim-scanline-beam" />}
+
+        {/* Hover click-to-expand pill cue */}
+        <div className="absolute bottom-3 right-3 z-10 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+          <div className="px-2.5 py-1 rounded-lg bg-slate-950/90 border border-cyan-500/50 backdrop-blur-md text-[10px] font-mono text-cyan-300 flex items-center gap-1.5 shadow-xl">
+            <Maximize2 className="w-3 h-3 text-cyan-400" />
+            <span>Click to Expand Full Screen</span>
+          </div>
+        </div>
 
         {/* Watermark Overlay */}
         {renderWatermark()}
 
-        {/* Top Control Bar: Title badge + Hotspot toggle (if admin enabled) + Full Screen */}
+        {/* Top Control Bar: Title badge + Animation toggle + Hotspot toggle + Full Screen */}
         <div className="absolute top-3 left-3 right-3 flex items-center justify-between gap-2 pointer-events-none z-20">
           <div className="pointer-events-auto px-3 py-1.5 rounded-lg bg-slate-950/90 border border-slate-700/80 backdrop-blur-md text-xs font-mono text-slate-200 flex items-center gap-2 shadow-lg">
             <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse" />
@@ -254,11 +276,32 @@ export const InteractiveHotspotImage: React.FC<InteractiveHotspotImageProps> = (
           </div>
 
           <div className="pointer-events-auto flex items-center gap-2">
+            {/* Animation Toggle Button */}
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsAnimated(!isAnimated);
+              }}
+              className={`px-2.5 py-1.5 rounded-lg border text-xs font-semibold backdrop-blur-md transition-all flex items-center gap-1.5 shadow-md ${
+                isAnimated
+                  ? 'bg-emerald-950/90 border-emerald-500/50 text-emerald-300'
+                  : 'bg-slate-900/90 border-slate-700 text-slate-400 hover:text-slate-200'
+              }`}
+              title={isAnimated ? 'Pause image animations (Ken Burns & Scanline)' : 'Enable image animations (Ken Burns & Scanline)'}
+            >
+              <Sparkles className={`w-3.5 h-3.5 ${isAnimated ? 'text-emerald-400 animate-spin' : 'text-slate-400'}`} style={{ animationDuration: '8s' }} />
+              <span className="hidden md:inline">{isAnimated ? 'Motion: ON' : 'Motion: OFF'}</span>
+            </button>
+
             {/* Hotspot Toggle Button: Displayed ONLY IF enabled from admin top setting */}
             {isGloballyEnabled && hotspots.length > 0 && (
               <button
                 type="button"
-                onClick={() => setShowHotspots(!showHotspots)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowHotspots(!showHotspots);
+                }}
                 className={`px-3 py-1.5 rounded-lg border text-xs font-semibold backdrop-blur-md transition-all flex items-center gap-1.5 shadow-md ${
                   showHotspots
                     ? 'bg-cyan-500 text-slate-950 border-cyan-400 font-bold ring-2 ring-cyan-500/30'
@@ -283,7 +326,10 @@ export const InteractiveHotspotImage: React.FC<InteractiveHotspotImageProps> = (
             {/* Full Screen Mode Button */}
             <button
               type="button"
-              onClick={handleOpenFullScreen}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleOpenFullScreen();
+              }}
               className="px-2.5 py-1.5 rounded-lg bg-slate-950/90 hover:bg-slate-900 border border-slate-700 text-slate-200 hover:text-white backdrop-blur-md transition-colors flex items-center gap-1.5 text-xs font-semibold shadow-md"
               title="View in distraction-free full screen mode"
             >

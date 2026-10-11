@@ -13,7 +13,8 @@ import {
   CheckCircle2,
   FileCode2,
   HelpCircle,
-  ArrowRight
+  ArrowRight,
+  RotateCcw
 } from 'lucide-react';
 
 interface SectionItem {
@@ -24,7 +25,7 @@ interface SectionItem {
 }
 
 export const FloatingProgressNav: React.FC = () => {
-  const { theme } = useCustomization();
+  const { theme, resetToDefaults } = useCustomization();
   const [activeSectionId, setActiveSectionId] = useState<string>('hero');
   const [scrollProgress, setScrollProgress] = useState<number>(0);
   const [isMenuOpen, setIsMenuOpen] = useState<boolean>(false);
@@ -148,7 +149,7 @@ export const FloatingProgressNav: React.FC = () => {
               <ChevronDown className={`w-3.5 h-3.5 text-slate-400 transition-transform duration-200 ${isMenuOpen ? 'rotate-180 text-cyan-400' : 'group-hover:text-slate-200'}`} />
             </button>
 
-            {/* Right: Progress % & Next/Prev Controls */}
+            {/* Right: Progress % & Next/Prev Controls & Quick Reset */}
             <div className="flex items-center gap-1.5 shrink-0">
               <span className="font-mono text-[11px] text-slate-400 font-medium px-1.5 py-0.5 rounded bg-slate-800/60 border border-slate-700/50">
                 {scrollProgress}%
@@ -174,6 +175,20 @@ export const FloatingProgressNav: React.FC = () => {
                   <ChevronDown className="w-3.5 h-3.5" />
                 </button>
               </div>
+
+              {/* One-click Reset to Defaults Quick Trigger */}
+              <button
+                type="button"
+                onClick={() => {
+                  if (window.confirm('Reset ALL website customization, layout density, and themes back to factory defaults?')) {
+                    resetToDefaults();
+                  }
+                }}
+                className="ml-1 p-1.5 rounded-lg bg-rose-950/70 hover:bg-rose-900 border border-rose-800/80 text-rose-300 hover:text-white transition-colors cursor-pointer"
+                title="Reset to Factory Defaults"
+              >
+                <RotateCcw className="w-3 h-3" />
+              </button>
             </div>
           </div>
         </div>

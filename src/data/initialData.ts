@@ -3,7 +3,7 @@ import { SiteConfig } from '../types/siteData';
 export const INITIAL_SITE_DATA: SiteConfig = {
   brand: 'Zaboraa Technologies',
   brandTagline: 'Founder-Led Enterprise VMware Cloud Architecture',
-  enableHotspots: false, // Default is hidden/disabled; can be enabled from admin edit site settings
+  enableHotspots: true, // Enabled by default so users can inspect components and launch modals immediately
   featuredVideoId: 'video-hcx-masterclass',
   watermark: {
     enabled: true,
@@ -17,6 +17,7 @@ export const INITIAL_SITE_DATA: SiteConfig = {
     layoutDensity: 'balanced',
     headerStyle: 'glass',
     backgroundPattern: 'tech-grid',
+    imageAnimationsEnabled: true,
     announcementBannerEnabled: false,
     announcementText: 'New: VMware to Nutanix NC2 on Azure Migration Assessment Engine is Live!',
     announcementLink: '/tools/nutanix-nc2-assessment',
@@ -565,7 +566,7 @@ export const INITIAL_SITE_DATA: SiteConfig = {
           id: 'nc2-design-2',
           title: 'Nutanix Move Automated Cross-Hypervisor Migration Pipeline (vSphere to AHV)',
           badge: 'Nutanix Move ESXi to AHV',
-          imageUrl: '/assets/images/nutanix_nc2_azure_architecture_1791687138119.jpg',
+          imageUrl: '/assets/images/nutanix_move_migration_1791690428522.jpg',
           description: 'End-to-end automated cross-hypervisor migration engine capturing block-level changed data tracking from VMware ESXi / vCenter and streaming non-disruptive deltas into Nutanix AHV on Azure, injecting VirtIO drivers and converting disk controllers automatically.',
           detailedSpecs: [
             'Agentless changed block tracking (CBT) synchronization replicating terabytes of VMDK storage in the background',
@@ -583,7 +584,7 @@ export const INITIAL_SITE_DATA: SiteConfig = {
           id: 'nc2-design-3',
           title: 'Distributed Storage Fabric (DSF), Resiliency & Multi-Region BCDR',
           badge: 'DSF RF2/RF3 & Leap DR',
-          imageUrl: '/assets/images/nutanix_nc2_azure_architecture_1791687138119.jpg',
+          imageUrl: '/assets/images/nutanix_dsf_storage_bcdr_1791690439733.jpg',
           description: 'Enterprise hyperconverged storage architecture with Replication Factor 2 (RF2) and Replication Factor 3 (RF3), inline deduplication, compression, erasure coding (EC-X), and automated disaster recovery orchestration with Nutanix Leap.',
           detailedSpecs: [
             'Distributed Storage Fabric (DSF) pooling all local Azure bare-metal NVMe SSDs into a single resilient datastore namespace',

@@ -159,16 +159,19 @@ export interface ArchitectureDesignItem {
   components?: { name: string; role: string; details: string }[];
 }
 
-export type ThemePreset = 'default' | 'nutanix' | 'azure' | 'terminal';
+export type ThemePreset = 'default' | 'nutanix' | 'azure' | 'terminal' | 'titanium' | 'nordic';
 export type LayoutDensity = 'balanced' | 'compact' | 'executive';
 export type HeaderStyle = 'glass' | 'solid' | 'blueprint';
 export type BackgroundPattern = 'tech-grid' | 'dot-matrix' | 'clean-minimal' | 'blueprint-glow';
+export type ImageAnimationType = 'ken-burns' | 'scanline' | 'hover-zoom' | 'all' | 'none';
 
 export interface AdminSettings {
   themePreset: ThemePreset;
   layoutDensity: LayoutDensity;
   headerStyle: HeaderStyle;
   backgroundPattern: BackgroundPattern;
+  imageAnimationsEnabled?: boolean;
+  imageAnimationType?: ImageAnimationType;
   announcementBannerEnabled: boolean;
   announcementText: string;
   announcementLink: string;

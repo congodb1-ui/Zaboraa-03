@@ -525,6 +525,76 @@ export const CustomizerDrawer: React.FC = () => {
                       <span className="w-5 h-5 rounded bg-slate-900 border border-slate-800" title="Dark Obsidian #080a0e" />
                     </div>
                   </div>
+
+                  {/* Theme 5: Enterprise Titanium */}
+                  <div
+                    onClick={() => {
+                      updateAdminSettings({ themePreset: 'titanium' });
+                      showNotification('Applied: Enterprise Titanium (Metallic Graphite & Cobalt)');
+                    }}
+                    className={`p-4 rounded-xl border transition-all cursor-pointer space-y-3 ${
+                      siteConfig.adminSettings?.themePreset === 'titanium'
+                        ? 'bg-blue-950/50 border-blue-400 ring-1 ring-blue-400/50 shadow-lg'
+                        : 'bg-slate-950/70 border-slate-800 hover:border-slate-700'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <span className="text-[10px] font-mono text-blue-400 font-bold uppercase tracking-wider">
+                          Theme 05 · Titanium
+                        </span>
+                        <h4 className="font-bold text-white text-sm mt-0.5">Enterprise Titanium (Metallic & Cobalt)</h4>
+                      </div>
+                      {siteConfig.adminSettings?.themePreset === 'titanium' && (
+                        <CheckCircle2 className="w-4 h-4 text-blue-400 shrink-0" />
+                      )}
+                    </div>
+                    <p className="text-[11px] text-slate-400 leading-relaxed">
+                      Aerospace-grade metallic graphite canvas with ice-white typography, brushed steel surfaces, and executive royal cobalt highlights.
+                    </p>
+                    {/* Color Swatches */}
+                    <div className="flex items-center gap-1.5 pt-1">
+                      <span className="w-5 h-5 rounded bg-blue-600 border border-blue-300/40" title="Cobalt #2563eb" />
+                      <span className="w-5 h-5 rounded bg-slate-400 border border-slate-200/40" title="Titanium #94a3b8" />
+                      <span className="w-5 h-5 rounded bg-[#162030] border border-slate-600" title="Steel #162030" />
+                      <span className="w-5 h-5 rounded bg-[#0b0f17] border border-slate-800" title="Graphite #0b0f17" />
+                    </div>
+                  </div>
+
+                  {/* Theme 6: Nordic Clean */}
+                  <div
+                    onClick={() => {
+                      updateAdminSettings({ themePreset: 'nordic' });
+                      showNotification('Applied: Nordic Clean (Minimalist Architectural Light)');
+                    }}
+                    className={`p-4 rounded-xl border transition-all cursor-pointer space-y-3 ${
+                      siteConfig.adminSettings?.themePreset === 'nordic'
+                        ? 'bg-sky-950/40 border-sky-400 ring-1 ring-sky-400/50 shadow-lg'
+                        : 'bg-slate-950/70 border-slate-800 hover:border-slate-700'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <span className="text-[10px] font-mono text-sky-400 font-bold uppercase tracking-wider">
+                          Theme 06 · Nordic Light
+                        </span>
+                        <h4 className="font-bold text-white text-sm mt-0.5">Nordic Clean (Architectural Light)</h4>
+                      </div>
+                      {siteConfig.adminSettings?.themePreset === 'nordic' && (
+                        <CheckCircle2 className="w-4 h-4 text-sky-400 shrink-0" />
+                      )}
+                    </div>
+                    <p className="text-[11px] text-slate-400 leading-relaxed">
+                      High-clarity Scandinavian daylight design with crisp chalk white panels, charcoal slate typography, and sky-blue architectural borders.
+                    </p>
+                    {/* Color Swatches */}
+                    <div className="flex items-center gap-1.5 pt-1">
+                      <span className="w-5 h-5 rounded bg-sky-500 border border-sky-200/40" title="Sky #0284c7" />
+                      <span className="w-5 h-5 rounded bg-slate-900 border border-slate-700" title="Charcoal #0f172a" />
+                      <span className="w-5 h-5 rounded bg-slate-100 border border-slate-300" title="Chalk #f8fafc" />
+                      <span className="w-5 h-5 rounded bg-white border border-slate-200" title="Pure White #ffffff" />
+                    </div>
+                  </div>
                 </div>
               </div>
 
@@ -593,6 +663,50 @@ export const CustomizerDrawer: React.FC = () => {
                       <div className="font-semibold text-[11px]">{p.label}</div>
                     </button>
                   ))}
+                </div>
+              </div>
+
+              {/* Image & Diagram Animation Suite */}
+              <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <span className="font-bold text-white text-xs uppercase tracking-wider flex items-center gap-1.5">
+                      <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
+                      <span>Image & Diagram Animation Engine</span>
+                    </span>
+                    <p className="text-[11px] text-slate-400 mt-0.5">
+                      Hardware-accelerated Ken Burns cinematic pan, holographic scanline beam, and hover zoom.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const current = siteConfig.adminSettings?.imageAnimationsEnabled ?? true;
+                      updateAdminSettings({ imageAnimationsEnabled: !current });
+                      showNotification(!current ? 'Image animations enabled' : 'Image animations paused');
+                    }}
+                    className={`px-3 py-1.5 rounded-lg border font-semibold text-xs transition-colors cursor-pointer ${
+                      (siteConfig.adminSettings?.imageAnimationsEnabled ?? true)
+                        ? 'bg-emerald-950 border-emerald-500 text-emerald-300'
+                        : 'bg-slate-900 border-slate-800 text-slate-400'
+                    }`}
+                  >
+                    {(siteConfig.adminSettings?.imageAnimationsEnabled ?? true) ? 'Animations: ON' : 'Animations: OFF'}
+                  </button>
+                </div>
+                <div className="grid grid-cols-3 gap-2 pt-1 text-[11px] text-slate-400 font-mono">
+                  <div className="p-2 rounded bg-slate-900/60 border border-slate-800/80 text-center">
+                    <span className="text-white block font-sans font-semibold">Ken Burns</span>
+                    <span>22s Slow Drift</span>
+                  </div>
+                  <div className="p-2 rounded bg-slate-900/60 border border-slate-800/80 text-center">
+                    <span className="text-white block font-sans font-semibold">Scanline Beam</span>
+                    <span>Packet Sweep</span>
+                  </div>
+                  <div className="p-2 rounded bg-slate-900/60 border border-slate-800/80 text-center">
+                    <span className="text-white block font-sans font-semibold">Hover Zoom</span>
+                    <span>Lens Focus</span>
+                  </div>
                 </div>
               </div>
 
@@ -681,7 +795,7 @@ export const CustomizerDrawer: React.FC = () => {
               </div>
 
               {/* Quick Action Reset */}
-              <div className="pt-2 flex justify-between items-center border-t border-slate-800">
+              <div className="pt-3 flex flex-col sm:flex-row gap-2 justify-between items-center border-t border-slate-800">
                 <button
                   type="button"
                   onClick={() => {
@@ -689,14 +803,29 @@ export const CustomizerDrawer: React.FC = () => {
                       themePreset: 'default',
                       layoutDensity: 'balanced',
                       headerStyle: 'glass',
-                      backgroundPattern: 'tech-grid'
+                      backgroundPattern: 'tech-grid',
+                      imageAnimationsEnabled: true
                     });
                     showNotification('Reverted appearance to factory default settings');
                   }}
-                  className="px-3 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-400 hover:text-white font-mono text-xs flex items-center gap-1.5 cursor-pointer"
+                  className="w-full sm:w-auto px-3 py-2 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 hover:text-white font-mono text-xs flex items-center justify-center gap-1.5 cursor-pointer"
                 >
                   <RotateCcw className="w-3.5 h-3.5" />
                   <span>Reset Appearance to Defaults</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (window.confirm('Reset ALL website customization, diagrams, and themes back to factory defaults?')) {
+                      resetToDefaults();
+                      showNotification('All customizations reset to factory defaults.');
+                    }
+                  }}
+                  className="w-full sm:w-auto px-3 py-2 rounded-lg bg-rose-950/60 hover:bg-rose-900 border border-rose-800/80 text-rose-200 font-mono text-xs flex items-center justify-center gap-1.5 cursor-pointer transition-colors"
+                >
+                  <Trash2 className="w-3.5 h-3.5 text-rose-400" />
+                  <span>One-Click Full Factory Reset</span>
                 </button>
               </div>
             </div>

@@ -1,23 +1,73 @@
 import React, { useState, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Cpu, HardDrive, ArrowRight, ShieldCheck, Zap, Info, Sliders, CheckCircle2, RotateCcw, Server, Layers, AlertTriangle } from 'lucide-react';
+import {
+  Cpu,
+  HardDrive,
+  ArrowRight,
+  ShieldCheck,
+  Zap,
+  Info,
+  Sliders,
+  CheckCircle2,
+  RotateCcw,
+  Server,
+  Layers,
+  AlertTriangle,
+  GitCompare,
+  BarChart3,
+  FileSpreadsheet,
+  Download,
+  Sparkles
+} from 'lucide-react';
 import {
   StoragePolicyId,
   ENTERPRISE_STORAGE_POLICIES,
   calculateStorageCapacity
 } from '../../utils/storageCalculator';
+import { exportDualCloudComparisonExcel } from '../../utils/excelFormatter';
 
 interface CloudPreset {
   name: string;
-  provider: 'Azure AVS' | 'AWS VMC' | 'Google Cloud GCVE';
+  provider: 'Azure AVS' | 'AWS VMC' | 'Google Cloud GCVE' | 'Azure NC2';
   nodeModel: string;
   nodeCores: number;
   nodeRamGB: number;
   rawStoragePerNodeTB: number;
   externalStorageName: string;
+  monthlyPriceEst: number;
 }
 
 const CLOUD_PRESETS: Record<string, CloudPreset> = {
+  'nc2-an36': {
+    name: 'Nutanix NC2 on Azure',
+    provider: 'Azure NC2',
+    nodeModel: 'AN36 (Intel Xeon Scalable)',
+    nodeCores: 36,
+    nodeRamGB: 768,
+    rawStoragePerNodeTB: 19.2,
+    externalStorageName: 'Nutanix DSF + Azure Blob Tier',
+    monthlyPriceEst: 4450
+  },
+  'nc2-an64': {
+    name: 'Nutanix NC2 on Azure',
+    provider: 'Azure NC2',
+    nodeModel: 'AN64 (Intel Xeon Performance)',
+    nodeCores: 64,
+    nodeRamGB: 1536,
+    rawStoragePerNodeTB: 38.4,
+    externalStorageName: 'Nutanix DSF + Azure Blob Tier',
+    monthlyPriceEst: 7200
+  },
+  'nc2-an100': {
+    name: 'Nutanix NC2 on Azure',
+    provider: 'Azure NC2',
+    nodeModel: 'AN100 (Intel Xeon Ultra-Dense)',
+    nodeCores: 104,
+    nodeRamGB: 2048,
+    rawStoragePerNodeTB: 76.8,
+    externalStorageName: 'Nutanix DSF + Azure Blob Tier',
+    monthlyPriceEst: 11500
+  },
   'avs-av36p': {
     name: 'Azure VMware Solution',
     provider: 'Azure AVS',
@@ -25,7 +75,8 @@ const CLOUD_PRESETS: Record<string, CloudPreset> = {
     nodeCores: 36,
     nodeRamGB: 576,
     rawStoragePerNodeTB: 15.4,
-    externalStorageName: 'Azure NetApp Files (ANF Standard/Premium)'
+    externalStorageName: 'Azure NetApp Files (ANF Standard/Premium)',
+    monthlyPriceEst: 4850
   },
   'avs-av36': {
     name: 'Azure VMware Solution',
@@ -34,7 +85,8 @@ const CLOUD_PRESETS: Record<string, CloudPreset> = {
     nodeCores: 36,
     nodeRamGB: 576,
     rawStoragePerNodeTB: 15.4,
-    externalStorageName: 'Azure NetApp Files (ANF)'
+    externalStorageName: 'Azure NetApp Files (ANF)',
+    monthlyPriceEst: 4600
   },
   'avs-av48': {
     name: 'Azure VMware Solution',
@@ -43,7 +95,8 @@ const CLOUD_PRESETS: Record<string, CloudPreset> = {
     nodeCores: 48,
     nodeRamGB: 768,
     rawStoragePerNodeTB: 23.0,
-    externalStorageName: 'Azure NetApp Files (ANF)'
+    externalStorageName: 'Azure NetApp Files (ANF)',
+    monthlyPriceEst: 6200
   },
   'avs-av52': {
     name: 'Azure VMware Solution',
@@ -52,7 +105,8 @@ const CLOUD_PRESETS: Record<string, CloudPreset> = {
     nodeCores: 52,
     nodeRamGB: 1536,
     rawStoragePerNodeTB: 38.4,
-    externalStorageName: 'Azure NetApp Files (ANF)'
+    externalStorageName: 'Azure NetApp Files (ANF)',
+    monthlyPriceEst: 7500
   },
   'avs-av64': {
     name: 'Azure VMware Solution',
@@ -61,7 +115,8 @@ const CLOUD_PRESETS: Record<string, CloudPreset> = {
     nodeCores: 64,
     nodeRamGB: 1024,
     rawStoragePerNodeTB: 30.7,
-    externalStorageName: 'Azure NetApp Files (ANF)'
+    externalStorageName: 'Azure NetApp Files (ANF)',
+    monthlyPriceEst: 8400
   },
   'vmc-i4i': {
     name: 'VMware Cloud on AWS',
@@ -70,7 +125,8 @@ const CLOUD_PRESETS: Record<string, CloudPreset> = {
     nodeCores: 64,
     nodeRamGB: 1024,
     rawStoragePerNodeTB: 30.0,
-    externalStorageName: 'Amazon FSx for NetApp ONTAP (Multi-AZ)'
+    externalStorageName: 'Amazon FSx for NetApp ONTAP (Multi-AZ)',
+    monthlyPriceEst: 5400
   },
   'vmc-i3en': {
     name: 'VMware Cloud on AWS',
@@ -79,7 +135,8 @@ const CLOUD_PRESETS: Record<string, CloudPreset> = {
     nodeCores: 48,
     nodeRamGB: 768,
     rawStoragePerNodeTB: 60.0,
-    externalStorageName: 'Amazon FSx for NetApp ONTAP'
+    externalStorageName: 'Amazon FSx for NetApp ONTAP',
+    monthlyPriceEst: 6800
   },
   'vmc-m7i': {
     name: 'VMware Cloud on AWS',
@@ -88,7 +145,8 @@ const CLOUD_PRESETS: Record<string, CloudPreset> = {
     nodeCores: 96,
     nodeRamGB: 384,
     rawStoragePerNodeTB: 15.0,
-    externalStorageName: 'Amazon FSx for NetApp ONTAP'
+    externalStorageName: 'Amazon FSx for NetApp ONTAP',
+    monthlyPriceEst: 6100
   },
   'gcve-ve1': {
     name: 'Google Cloud VMware Engine',
@@ -97,7 +155,8 @@ const CLOUD_PRESETS: Record<string, CloudPreset> = {
     nodeCores: 72,
     nodeRamGB: 768,
     rawStoragePerNodeTB: 19.2,
-    externalStorageName: 'Google Cloud NetApp Volumes (GCNV)'
+    externalStorageName: 'Google Cloud NetApp Volumes (GCNV)',
+    monthlyPriceEst: 5100
   },
   'gcve-ve2': {
     name: 'Google Cloud VMware Engine',
@@ -106,7 +165,8 @@ const CLOUD_PRESETS: Record<string, CloudPreset> = {
     nodeCores: 128,
     nodeRamGB: 2048,
     rawStoragePerNodeTB: 51.2,
-    externalStorageName: 'Google Cloud NetApp Volumes (GCNV)'
+    externalStorageName: 'Google Cloud NetApp Volumes (GCNV)',
+    monthlyPriceEst: 8900
   }
 };
 
@@ -208,6 +268,102 @@ export const NodeSizingToolPage: React.FC = () => {
     storageAnalysis
   ]);
 
+  // Comparison State & Calculations for Side-by-Side Comparator
+  const [showCompareMode, setShowCompareMode] = useState<boolean>(true);
+  const [compareCloudKey, setCompareCloudKey] = useState<string>('nc2-an36');
+
+  const presetB = CLOUD_PRESETS[compareCloudKey];
+  const cloudBStorageAnalysis = useMemo(() => {
+    return calculateStorageCapacity({
+      totalUsedStorageTB: totalStorageTB,
+      totalProvisionedStorageTB: totalStorageTB * 1.3,
+      vsanPercentage: effectiveVsanPercent,
+      storagePolicyId,
+      slackFactorPercent,
+      nodeRawStorageTB: presetB.rawStoragePerNodeTB
+    });
+  }, [totalStorageTB, effectiveVsanPercent, storagePolicyId, slackFactorPercent, presetB.rawStoragePerNodeTB]);
+
+  const cloudBCalculations = useMemo(() => {
+    const totalRequiredVcpu = vmCount * avgVcpu;
+    const effectiveCoresNeeded = totalRequiredVcpu / vCpuOvercommit;
+    const computeNodesNeeded = Math.ceil(effectiveCoresNeeded / presetB.nodeCores);
+
+    const totalRawRam = vmCount * avgRamGB;
+    const totalRamWithBuffer = totalRawRam * (1 + ramBufferPercent / 100);
+    const memoryNodesNeeded = Math.ceil(totalRamWithBuffer / presetB.nodeRamGB);
+
+    const vsanNodesNeededDecoupled = cloudBStorageAnalysis.vsanStorageNodesRequired;
+    const nodesWithDecoupled = Math.max(selectedPolicy.minHosts, computeNodesNeeded, memoryNodesNeeded, vsanNodesNeededDecoupled);
+
+    return {
+      computeNodesNeeded,
+      memoryNodesNeeded,
+      vsanNodesNeededDecoupled,
+      nodesWithDecoupled
+    };
+  }, [vmCount, avgVcpu, avgRamGB, vCpuOvercommit, ramBufferPercent, presetB, selectedPolicy, cloudBStorageAnalysis]);
+
+  const savingsComparisonText = useMemo(() => {
+    const costA = calculations.nodesWithDecoupled * preset.monthlyPriceEst;
+    const costB = cloudBCalculations.nodesWithDecoupled * presetB.monthlyPriceEst;
+    const diff = Math.abs(costA - costB);
+    const diffPct = Math.round((diff / Math.max(costA, costB)) * 100);
+    if (costA < costB) {
+      return `${preset.name} saves $${diff.toLocaleString()}/mo (${diffPct}%) vs ${presetB.name}`;
+    } else if (costB < costA) {
+      return `${presetB.name} saves $${diff.toLocaleString()}/mo (${diffPct}%) vs ${preset.name}`;
+    }
+    return 'Identical Estimated Monthly Run-Rate';
+  }, [calculations.nodesWithDecoupled, cloudBCalculations.nodesWithDecoupled, preset, presetB]);
+
+  const handleExportComparisonExcel = () => {
+    const costA = calculations.nodesWithDecoupled * preset.monthlyPriceEst;
+    const costB = cloudBCalculations.nodesWithDecoupled * presetB.monthlyPriceEst;
+    exportDualCloudComparisonExcel({
+      projectName: 'Hyperscaler Multi-Cloud Architecture Evaluation',
+      architectName: 'Wasim Sayyed, Principal Cloud Architect',
+      cloudA: {
+        name: preset.name,
+        nodeSku: preset.nodeModel,
+        nodeCount: calculations.nodesWithDecoupled,
+        coresPerNode: preset.nodeCores,
+        ramPerNodeGB: preset.nodeRamGB,
+        rawStoragePerNodeTB: preset.rawStoragePerNodeTB,
+        usableStorageTB: totalStorageTB,
+        vCpuAllocation: calculations.totalRequiredVcpu,
+        ramAllocationGB: calculations.totalRamGB,
+        monthlyOpex: costA,
+        threeYearTco: costA * 36,
+        storageEfficiency: `${selectedPolicy.name} with ${preset.externalStorageName}`,
+        features: [
+          'Bare-metal architecture',
+          'Enterprise hyperconverged storage',
+          'Direct VNet / VPC cross-peering'
+        ]
+      },
+      cloudB: {
+        name: presetB.name,
+        nodeSku: presetB.nodeModel,
+        nodeCount: cloudBCalculations.nodesWithDecoupled,
+        coresPerNode: presetB.nodeCores,
+        ramPerNodeGB: presetB.nodeRamGB,
+        rawStoragePerNodeTB: presetB.rawStoragePerNodeTB,
+        usableStorageTB: totalStorageTB,
+        vCpuAllocation: calculations.totalRequiredVcpu,
+        ramAllocationGB: calculations.totalRamGB,
+        monthlyOpex: costB,
+        threeYearTco: costB * 36,
+        storageEfficiency: `${selectedPolicy.name} with ${presetB.externalStorageName}`,
+        features: [
+          'Bare-metal architecture',
+          'Enterprise hyperconverged storage',
+          'Direct VNet / VPC cross-peering'
+        ]
+      }
+    });
+  };
+
   const handleExportToGenerator = () => {
     try {
       localStorage.setItem('zaboraa_sizing_export', JSON.stringify({
@@ -258,13 +414,37 @@ export const NodeSizingToolPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Cloud & SKU Selector Bar */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      {/* Cloud & SKU Selector Bar (4 Clouds including Nutanix NC2) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Nutanix NC2 */}
+        <div className="p-3.5 rounded-xl bg-slate-900 border border-emerald-500/30 space-y-2">
+          <div className="text-xs font-mono font-bold text-emerald-400 uppercase flex items-center justify-between">
+            <span>Nutanix NC2 on Azure</span>
+            <span className="text-[9px] px-1.5 py-0.2 rounded bg-emerald-950 text-emerald-300 border border-emerald-800">Bare-Metal</span>
+          </div>
+          <div className="space-y-1.5">
+            {(['nc2-an36', 'nc2-an64', 'nc2-an100'] as const).map(k => (
+              <button
+                key={k}
+                onClick={() => setSelectedCloudKey(k)}
+                className={`w-full p-2 rounded-lg text-left text-xs font-mono transition-all cursor-pointer border ${
+                  selectedCloudKey === k
+                    ? 'bg-emerald-950 border-emerald-400 text-white font-bold shadow-sm'
+                    : 'bg-slate-950/60 border-slate-800 text-slate-400 hover:border-slate-700'
+                }`}
+              >
+                <div>{CLOUD_PRESETS[k].nodeModel}</div>
+                <div className="text-[9px] text-slate-500 mt-0.5">{CLOUD_PRESETS[k].nodeCores} Cores · {CLOUD_PRESETS[k].nodeRamGB} GiB · {CLOUD_PRESETS[k].rawStoragePerNodeTB} TiB NVMe</div>
+              </button>
+            ))}
+          </div>
+        </div>
+
         {/* AVS */}
         <div className="p-3.5 rounded-xl bg-slate-900 border border-slate-800 space-y-2">
           <div className="text-xs font-mono font-bold text-cyan-400 uppercase">Azure VMware Solution (AVS)</div>
           <div className="grid grid-cols-2 gap-1.5">
-            {(['avs-av36p', 'avs-av36', 'avs-av48', 'avs-av64', 'avs-av52'] as const).map(k => (
+            {(['avs-av36p', 'avs-av36', 'avs-av48', 'avs-av64'] as const).map(k => (
               <button
                 key={k}
                 onClick={() => setSelectedCloudKey(k)}
@@ -283,7 +463,7 @@ export const NodeSizingToolPage: React.FC = () => {
 
         {/* GCVE */}
         <div className="p-3.5 rounded-xl bg-slate-900 border border-slate-800 space-y-2">
-          <div className="text-xs font-mono font-bold text-blue-400 uppercase">Google Cloud VMware Engine (GCVE)</div>
+          <div className="text-xs font-mono font-bold text-blue-400 uppercase">Google Cloud VMware (GCVE)</div>
           <div className="space-y-1.5">
             {(['gcve-ve1', 'gcve-ve2'] as const).map(k => (
               <button
@@ -296,7 +476,7 @@ export const NodeSizingToolPage: React.FC = () => {
                 }`}
               >
                 <div>{CLOUD_PRESETS[k].nodeModel}</div>
-                <div className="text-[9px] text-slate-500 mt-0.5">{CLOUD_PRESETS[k].nodeCores} Cores · {CLOUD_PRESETS[k].nodeRamGB} GiB RAM · {CLOUD_PRESETS[k].rawStoragePerNodeTB} TiB Raw</div>
+                <div className="text-[9px] text-slate-500 mt-0.5">{CLOUD_PRESETS[k].nodeCores} Cores · {CLOUD_PRESETS[k].nodeRamGB} GiB · {CLOUD_PRESETS[k].rawStoragePerNodeTB} TiB Raw</div>
               </button>
             ))}
           </div>
@@ -317,12 +497,266 @@ export const NodeSizingToolPage: React.FC = () => {
                 }`}
               >
                 <div>{CLOUD_PRESETS[k].nodeModel}</div>
-                <div className="text-[9px] text-slate-500 mt-0.5">{CLOUD_PRESETS[k].nodeCores} Cores · {CLOUD_PRESETS[k].nodeRamGB} GiB RAM · {CLOUD_PRESETS[k].rawStoragePerNodeTB} TiB Raw</div>
+                <div className="text-[9px] text-slate-500 mt-0.5">{CLOUD_PRESETS[k].nodeCores} Cores · {CLOUD_PRESETS[k].nodeRamGB} GiB · {CLOUD_PRESETS[k].rawStoragePerNodeTB} TiB Raw</div>
               </button>
             ))}
           </div>
         </div>
       </div>
+
+      {/* Side-by-Side Dual-Cloud Comparator Mode Bar */}
+      <div className="p-4 rounded-xl bg-gradient-to-r from-slate-900 via-slate-900/90 to-slate-950 border border-cyan-500/30 flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-lg bg-cyan-950 border border-cyan-500/40 flex items-center justify-center text-cyan-400 shrink-0">
+            <GitCompare className="w-5 h-5" />
+          </div>
+          <div>
+            <h3 className="text-sm font-bold text-white flex items-center gap-2">
+              <span>Dual-Cloud Side-by-Side Cost & Architecture Comparator</span>
+              <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-cyan-950 text-cyan-300 border border-cyan-500/40">
+                Visual Chart & TCO
+              </span>
+            </h3>
+            <p className="text-xs text-slate-400">
+              Benchmark Nutanix NC2 vs Azure AVS / AWS VMC with side-by-side cost breakdown charts and color-coded Excel export.
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 shrink-0">
+          <button
+            type="button"
+            onClick={() => setShowCompareMode(!showCompareMode)}
+            className={`px-3 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-md ${
+              showCompareMode
+                ? 'bg-cyan-500 text-slate-950'
+                : 'bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700'
+            }`}
+          >
+            <BarChart3 className="w-4 h-4" />
+            <span>{showCompareMode ? 'Hide Comparison Chart' : 'Show Side-by-Side Comparison'}</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={handleExportComparisonExcel}
+            className="px-3 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-md"
+            title="Download Color-Coded XML/HTML Excel Comparison Sheet"
+          >
+            <FileSpreadsheet className="w-4 h-4" />
+            <span>Export Styled Excel</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Side-by-Side Comparison Tray (Rendered if showCompareMode is true) */}
+      {showCompareMode && (
+        <div className="p-6 rounded-2xl bg-slate-900 border border-slate-800 shadow-2xl space-y-6 animate-in fade-in duration-200">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800 pb-4">
+            <div className="space-y-1">
+              <span className="text-xs font-mono text-cyan-400 uppercase font-bold tracking-wider">
+                Side-by-Side Benchmark & TCO Analysis
+              </span>
+              <h3 className="text-lg font-bold text-white">
+                Comparing Cloud A ({CLOUD_PRESETS[selectedCloudKey].name} - {CLOUD_PRESETS[selectedCloudKey].nodeModel}) vs Cloud B ({CLOUD_PRESETS[compareCloudKey].name} - {CLOUD_PRESETS[compareCloudKey].nodeModel})
+              </h3>
+            </div>
+
+            {/* Cloud B Selector */}
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-slate-400">Select Cloud B:</span>
+              <select
+                value={compareCloudKey}
+                onChange={e => setCompareCloudKey(e.target.value)}
+                className="px-3 py-1.5 rounded-lg bg-slate-950 border border-slate-700 text-xs font-mono text-white outline-none cursor-pointer"
+              >
+                {Object.entries(CLOUD_PRESETS).map(([key, item]) => (
+                  <option key={key} value={key}>
+                    {item.name} - {item.nodeModel} (${item.monthlyPriceEst}/mo)
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {/* Side-by-Side Visual Comparison Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Cloud A Card */}
+            <div className="p-5 rounded-xl bg-slate-950/80 border border-cyan-500/40 space-y-4">
+              <div className="flex items-start justify-between border-b border-slate-800 pb-3">
+                <div>
+                  <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-cyan-950 text-cyan-300 border border-cyan-800 font-bold uppercase">
+                    Primary Baseline (Cloud A)
+                  </span>
+                  <h4 className="text-base font-bold text-white mt-1.5">{CLOUD_PRESETS[selectedCloudKey].name}</h4>
+                  <p className="text-xs text-cyan-400 font-mono">{CLOUD_PRESETS[selectedCloudKey].nodeModel}</p>
+                </div>
+                <div className="text-right">
+                  <div className="text-2xl font-black text-cyan-300 font-mono">
+                    ${(calculations.nodesWithDecoupled * CLOUD_PRESETS[selectedCloudKey].monthlyPriceEst).toLocaleString()}
+                  </div>
+                  <div className="text-[10px] text-slate-500">Est. Monthly Opex</div>
+                </div>
+              </div>
+
+              <div className="space-y-2 text-xs font-mono">
+                <div className="flex justify-between text-slate-300 py-1 border-b border-slate-900">
+                  <span>Hosts Required:</span>
+                  <span className="text-white font-bold">{calculations.nodesWithDecoupled} Nodes</span>
+                </div>
+                <div className="flex justify-between text-slate-300 py-1 border-b border-slate-900">
+                  <span>Total Cores:</span>
+                  <span className="text-white">{calculations.nodesWithDecoupled * CLOUD_PRESETS[selectedCloudKey].nodeCores} Cores</span>
+                </div>
+                <div className="flex justify-between text-slate-300 py-1 border-b border-slate-900">
+                  <span>Total RAM:</span>
+                  <span className="text-white">{calculations.nodesWithDecoupled * CLOUD_PRESETS[selectedCloudKey].nodeRamGB} GiB</span>
+                </div>
+                <div className="flex justify-between text-slate-300 py-1 border-b border-slate-900">
+                  <span>Storage Tier:</span>
+                  <span className="text-cyan-300 truncate max-w-[200px]">{CLOUD_PRESETS[selectedCloudKey].externalStorageName}</span>
+                </div>
+                <div className="flex justify-between text-slate-300 py-1">
+                  <span>3-Year TCO Estimate:</span>
+                  <span className="text-emerald-400 font-bold">
+                    ${(calculations.nodesWithDecoupled * CLOUD_PRESETS[selectedCloudKey].monthlyPriceEst * 36).toLocaleString()}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Cloud B Card */}
+            <div className="p-5 rounded-xl bg-slate-950/80 border border-indigo-500/40 space-y-4">
+              <div className="flex items-start justify-between border-b border-slate-800 pb-3">
+                <div>
+                  <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-indigo-950 text-indigo-300 border border-indigo-800 font-bold uppercase">
+                    Comparator Target (Cloud B)
+                  </span>
+                  <h4 className="text-base font-bold text-white mt-1.5">{CLOUD_PRESETS[compareCloudKey].name}</h4>
+                  <p className="text-xs text-indigo-400 font-mono">{CLOUD_PRESETS[compareCloudKey].nodeModel}</p>
+                </div>
+                <div className="text-right">
+                  <div className="text-2xl font-black text-indigo-300 font-mono">
+                    ${(cloudBCalculations.nodesWithDecoupled * CLOUD_PRESETS[compareCloudKey].monthlyPriceEst).toLocaleString()}
+                  </div>
+                  <div className="text-[10px] text-slate-500">Est. Monthly Opex</div>
+                </div>
+              </div>
+
+              <div className="space-y-2 text-xs font-mono">
+                <div className="flex justify-between text-slate-300 py-1 border-b border-slate-900">
+                  <span>Hosts Required:</span>
+                  <span className="text-white font-bold">{cloudBCalculations.nodesWithDecoupled} Nodes</span>
+                </div>
+                <div className="flex justify-between text-slate-300 py-1 border-b border-slate-900">
+                  <span>Total Cores:</span>
+                  <span className="text-white">{cloudBCalculations.nodesWithDecoupled * CLOUD_PRESETS[compareCloudKey].nodeCores} Cores</span>
+                </div>
+                <div className="flex justify-between text-slate-300 py-1 border-b border-slate-900">
+                  <span>Total RAM:</span>
+                  <span className="text-white">{cloudBCalculations.nodesWithDecoupled * CLOUD_PRESETS[compareCloudKey].nodeRamGB} GiB</span>
+                </div>
+                <div className="flex justify-between text-slate-300 py-1 border-b border-slate-900">
+                  <span>Storage Tier:</span>
+                  <span className="text-indigo-300 truncate max-w-[200px]">{CLOUD_PRESETS[compareCloudKey].externalStorageName}</span>
+                </div>
+                <div className="flex justify-between text-slate-300 py-1">
+                  <span>3-Year TCO Estimate:</span>
+                  <span className="text-emerald-400 font-bold">
+                    ${(cloudBCalculations.nodesWithDecoupled * CLOUD_PRESETS[compareCloudKey].monthlyPriceEst * 36).toLocaleString()}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Interactive SVG Comparison Chart (Monthly Opex & 3-Year TCO) */}
+          <div className="p-5 rounded-xl bg-slate-950 border border-slate-800 space-y-4">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-2">
+                <BarChart3 className="w-4 h-4 text-cyan-400" />
+                <span>Visual TCO Cost Difference Spectrum</span>
+              </span>
+              <span className="text-xs font-mono text-emerald-400 font-bold">
+                {savingsComparisonText}
+              </span>
+            </div>
+
+            {/* SVG Bar Chart */}
+            <div className="space-y-4 pt-2">
+              {/* Monthly Opex Comparison Bar */}
+              <div className="space-y-1.5">
+                <div className="flex justify-between text-xs font-mono">
+                  <span className="text-slate-300">Monthly Opex ({CLOUD_PRESETS[selectedCloudKey].nodeModel} vs {CLOUD_PRESETS[compareCloudKey].nodeModel})</span>
+                  <span className="text-cyan-400">
+                    ${(calculations.nodesWithDecoupled * CLOUD_PRESETS[selectedCloudKey].monthlyPriceEst).toLocaleString()} vs ${(cloudBCalculations.nodesWithDecoupled * CLOUD_PRESETS[compareCloudKey].monthlyPriceEst).toLocaleString()}
+                  </span>
+                </div>
+                <div className="w-full h-5 rounded-lg bg-slate-900 flex overflow-hidden border border-slate-800">
+                  <div
+                    className="bg-cyan-500 h-full flex items-center justify-center text-[10px] font-bold text-slate-950 font-mono transition-all duration-500"
+                    style={{
+                      width: `${Math.round(
+                        ((calculations.nodesWithDecoupled * CLOUD_PRESETS[selectedCloudKey].monthlyPriceEst) /
+                          Math.max(1, (calculations.nodesWithDecoupled * CLOUD_PRESETS[selectedCloudKey].monthlyPriceEst) + (cloudBCalculations.nodesWithDecoupled * CLOUD_PRESETS[compareCloudKey].monthlyPriceEst))) * 100
+                      )}%`
+                    }}
+                  >
+                    Cloud A
+                  </div>
+                  <div
+                    className="bg-indigo-500 h-full flex items-center justify-center text-[10px] font-bold text-white font-mono transition-all duration-500"
+                    style={{
+                      width: `${Math.round(
+                        ((cloudBCalculations.nodesWithDecoupled * CLOUD_PRESETS[compareCloudKey].monthlyPriceEst) /
+                          Math.max(1, (calculations.nodesWithDecoupled * CLOUD_PRESETS[selectedCloudKey].monthlyPriceEst) + (cloudBCalculations.nodesWithDecoupled * CLOUD_PRESETS[compareCloudKey].monthlyPriceEst))) * 100
+                      )}%`
+                    }}
+                  >
+                    Cloud B
+                  </div>
+                </div>
+              </div>
+
+              {/* Node Density Comparison Bar */}
+              <div className="space-y-1.5">
+                <div className="flex justify-between text-xs font-mono">
+                  <span className="text-slate-300">Cluster Host Count ({calculations.nodesWithDecoupled} Hosts vs {cloudBCalculations.nodesWithDecoupled} Hosts)</span>
+                  <span className="text-indigo-400 font-semibold">
+                    {calculations.nodesWithDecoupled < cloudBCalculations.nodesWithDecoupled
+                      ? `Cloud A requires ${cloudBCalculations.nodesWithDecoupled - calculations.nodesWithDecoupled} fewer hosts`
+                      : calculations.nodesWithDecoupled > cloudBCalculations.nodesWithDecoupled
+                      ? `Cloud B requires ${calculations.nodesWithDecoupled - cloudBCalculations.nodesWithDecoupled} fewer hosts`
+                      : 'Identical host count'}
+                  </span>
+                </div>
+                <div className="w-full h-5 rounded-lg bg-slate-900 flex overflow-hidden border border-slate-800">
+                  <div
+                    className="bg-cyan-600 h-full flex items-center justify-center text-[10px] font-bold text-white font-mono transition-all duration-500"
+                    style={{
+                      width: `${Math.round(
+                        (calculations.nodesWithDecoupled / Math.max(1, calculations.nodesWithDecoupled + cloudBCalculations.nodesWithDecoupled)) * 100
+                      )}%`
+                    }}
+                  >
+                    {calculations.nodesWithDecoupled} hosts
+                  </div>
+                  <div
+                    className="bg-indigo-600 h-full flex items-center justify-center text-[10px] font-bold text-white font-mono transition-all duration-500"
+                    style={{
+                      width: `${Math.round(
+                        (cloudBCalculations.nodesWithDecoupled / Math.max(1, calculations.nodesWithDecoupled + cloudBCalculations.nodesWithDecoupled)) * 100
+                      )}%`
+                    }}
+                  >
+                    {cloudBCalculations.nodesWithDecoupled} hosts
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Main Sizing Workbench Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">

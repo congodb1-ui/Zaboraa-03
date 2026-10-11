@@ -137,7 +137,7 @@ export const CustomizationProvider: React.FC<{ children: React.ReactNode }> = ({
             knowledgeBase: parsed.knowledgeBase || INITIAL_SITE_DATA.knowledgeBase,
             caseStudies: parsed.caseStudies || INITIAL_SITE_DATA.caseStudies,
             services: parsed.services || INITIAL_SITE_DATA.services,
-            enableHotspots: parsed.enableHotspots !== undefined ? parsed.enableHotspots : (INITIAL_SITE_DATA.enableHotspots ?? false)
+            enableHotspots: parsed.enableHotspots !== undefined ? parsed.enableHotspots : true
           };
           if (!merged.founder.portraitImage || merged.founder.portraitImage.includes('founder_architect_portrait')) {
             merged.founder.portraitImage = INITIAL_SITE_DATA.founder.portraitImage;

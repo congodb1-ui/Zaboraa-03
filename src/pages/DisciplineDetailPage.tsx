@@ -16,6 +16,7 @@ import {
   Sliders
 } from 'lucide-react';
 import { resolveMediaUrl } from '../data/mediaAssets';
+import { InteractiveHotspotImage } from '../components/InteractiveHotspotImage';
 
 export const DisciplineDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -174,27 +175,14 @@ export const DisciplineDetailPage: React.FC = () => {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
         {/* Visual Architecture Image (7 Cols) */}
         <div className="lg:col-span-7 space-y-4">
-          <div className="rounded-xl overflow-hidden border border-slate-800 bg-slate-950 shadow-2xl relative group">
-            <img
-              src={resolvedImageUrl}
-              alt={currentDesign.title}
-              referrerPolicy="no-referrer"
-              className="w-full h-auto object-cover max-h-[550px] transition-transform duration-500 group-hover:scale-[1.01]"
-              onError={(e) => {
-                (e.target as HTMLImageElement).src = '/assets/images/hero_cloud_datacenter_1791450064361.jpg';
-              }}
-            />
-            <div className="p-4 bg-slate-900/90 border-t border-slate-800 flex items-center justify-between text-xs text-slate-300">
-              <span className="font-semibold text-white">{currentDesign.title}</span>
-              <Link
-                to="/blueprints"
-                className="text-cyan-400 hover:text-cyan-300 flex items-center gap-1 font-mono text-[11px]"
-              >
-                <span>Interactive Layer View</span>
-                <ChevronRight className="w-3.5 h-3.5" />
-              </Link>
-            </div>
-          </div>
+          <InteractiveHotspotImage
+            key={`${platform.id}-${currentDesign.id}`}
+            imageUrl={resolvedImageUrl}
+            designId={currentDesign.id}
+            title={currentDesign.title}
+            subtitle={platform.platform}
+            description={currentDesign.description}
+          />
 
           <p className="text-sm text-slate-300 leading-relaxed p-4 rounded-xl bg-slate-900/40 border border-slate-800/80">
             {currentDesign.description}

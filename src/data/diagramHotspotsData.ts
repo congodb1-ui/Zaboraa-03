@@ -1953,6 +1953,323 @@ export const DIAGRAM_HOTSPOTS_COLLECTION: Record<string, DiagramHotspot[]> = {
       ],
       packetFlowSummary: 'Correlates VM MAC/IP with switch CAM tables and BGP routing ribs -> renders visual path with hop latency and packet drop markers.'
     }
+  ],
+
+  // ==========================================
+  // 8. NUTANIX CLOUD CLUSTERS (NC2) ON AZURE
+  // ==========================================
+
+  // NC2 Design 1: Azure Bare-Metal Node Architecture & Flow Virtual Networking
+  'nc2-design-1': [
+    {
+      id: 'nc2-1-an-nodes',
+      name: 'Azure Bare-Metal Compute Nodes (AN36 / AN64 / AN100)',
+      category: 'Compute & Cluster',
+      badge: 'Bare-Metal Node SKUs',
+      xPercent: 78,
+      yPercent: 32,
+      shortDescription: 'Dedicated Azure bare-metal hardware running Nutanix AHV hypervisor without nested virtualization penalties.',
+      fullDescription: 'High-density physical nodes (AN36: 36c/72t, 768GB RAM; AN36P: 1.5TB RAM; AN64: 64c/128t, 1.5TB RAM; AN100: 104c/208t, 2TB RAM) with dual-port 100GbE physical NICs and PCIe NVMe solid-state storage. Physical hypervisors boot directly from Azure storage fabrics, achieving native CPU execution speeds for demanding enterprise database workloads.',
+      role: 'Hyperconverged Bare-Metal Execution Node',
+      trafficDirection: 'Internal node interconnect and Azure VNet egress',
+      highAvailability: 'Host auto-remediation via Nutanix cluster healing; failed nodes replaced within Azure portal in minutes.',
+      sizingAndConstraints: 'Minimum 3 nodes per NC2 cluster; scales up to 28 nodes per Nutanix AOS storage cluster.',
+      portsTable: [
+        { protocol: 'TCP', port: '9440', source: 'Admin Workstation', destination: 'Prism Element / Central', purpose: 'Prism Management HTTPS console' },
+        { protocol: 'TCP', port: '22', source: 'Management Subnet', destination: 'AHV Hypervisor Host', purpose: 'SSH administration interface' }
+      ],
+      troubleshootingCli: [
+        { command: 'ncli host list', context: 'Inspect status and hardware inventory of physical bare-metal hosts', expectedOutput: 'Host 1: AN64, Hypervisor: AHV, State: Normal' },
+        { command: 'cluster status', context: 'Verify overall AOS cluster operational status', expectedOutput: 'State: UP, All services running normally' }
+      ],
+      packetFlowSummary: 'User VMs execute directly on bare-metal Intel Xeon silicon -> I/O trapped by AHV kernel -> forwarded directly to Controller VM (CVM) or Azure physical NIC.'
+    },
+    {
+      id: 'nc2-1-cvm-fabric',
+      name: 'Nutanix Controller VM (CVM) Storage Fabric',
+      category: 'Storage Fabric',
+      badge: 'CVM Storage Core',
+      xPercent: 48,
+      yPercent: 52,
+      shortDescription: 'Dedicated storage controller VM per host clustering local NVMe drives into global Distributed Storage Fabric.',
+      fullDescription: 'The CVM bypasses hypervisor abstraction via PCI pass-through to manage local high-speed NVMe drives directly. CVMs across the entire bare-metal cluster communicate over an isolated backplane network to deliver linear IOPS scaling, data locality, dynamic cache management, and automated multi-copy replication.',
+      role: 'Distributed Storage & Management Engine',
+      trafficDirection: 'Intra-cluster storage replication and I/O handling',
+      highAvailability: 'Auto-pathing reroutes I/O to surviving peer CVMs in under 200ms if a local CVM restarts.',
+      sizingAndConstraints: 'Allocates 32 GB to 64 GB RAM and 8 to 12 vCPUs per host based on active storage services.',
+      portsTable: [
+        { protocol: 'TCP', port: '2020', source: 'CVM', destination: 'Peer CVMs', purpose: 'Stargate cluster metadata coordination' },
+        { protocol: 'TCP', port: '3260', source: 'AHV Hypervisor', destination: 'Local CVM', purpose: 'iSCSI data path for VM virtual disks' }
+      ],
+      troubleshootingCli: [
+        { command: 'nodetool -h 127.0.0.1 ring', context: 'Inspect Cassandra distributed metadata ring health', expectedOutput: 'All Cassandra tokens balanced and healthy' },
+        { command: 'svmips', context: 'List all active CVM IP addresses across the cluster', expectedOutput: '10.20.1.11 10.20.1.12 10.20.1.13' }
+      ],
+      packetFlowSummary: 'VM disk write request -> received by local CVM Stargate process -> committed to local NVMe tier -> replicated synchronously across peer node CVMs before ACK.'
+    },
+    {
+      id: 'nc2-1-flow-vnet',
+      name: 'Flow Virtual Networking & Native Azure VNet Flow',
+      category: 'Network & Routing',
+      badge: 'Native Azure VNet SDN',
+      xPercent: 88,
+      yPercent: 62,
+      shortDescription: 'Native Azure VNet integration without nested virtualization or double-encapsulation penalties.',
+      fullDescription: 'Nutanix Flow Virtual Networking integrates directly with Azure Virtual Network APIs. User VM interfaces receive secondary private IP addresses directly from Azure subnets, enabling seamless communication with Azure native services (Azure SQL, Cosmos DB, Azure NetApp Files) with zero routing encapsulation overhead.',
+      role: 'Software-Defined Network & Azure Fabric Bridge',
+      trafficDirection: 'East-West inter-VM and North-South Azure cloud connectivity',
+      highAvailability: 'Redundant Azure NIC attachments with automated link failover.',
+      sizingAndConstraints: 'Supports native microsegmentation, VPC overlays, dynamic routing (BGP), and floating IPs.',
+      portsTable: [
+        { protocol: 'Any', port: 'All', source: 'User VM', destination: 'Azure Spoke VNet', purpose: 'Direct line-rate Azure VNet transit' }
+      ],
+      troubleshootingCli: [
+        { command: 'az network nic show -g <rg> -n <nc2-nic-name> --query "ipConfigurations[].privateIpAddress"', context: 'List private IPs assigned by Azure to Nutanix AHV nodes', expectedOutput: '["10.0.1.10", "10.0.1.11", "10.0.1.12"]' }
+      ],
+      packetFlowSummary: 'Packet leaves User VM vNIC -> Flow SDN classifies packet -> forwards directly through Azure physical NIC into customer Azure VNet with zero overlay encapsulation penalty.'
+    },
+    {
+      id: 'nc2-1-expressroute',
+      name: 'Azure ExpressRoute FastPath & Hybrid Interconnect',
+      category: 'Interconnect',
+      badge: 'FastPath 100G Transit',
+      xPercent: 18,
+      yPercent: 48,
+      shortDescription: 'Direct hardware-level hybrid routing connecting on-premises vSphere datacenters to NC2 bare-metal nodes.',
+      fullDescription: 'Dedicated Azure ExpressRoute circuit with FastPath enabled. Traffic flows directly between physical datacenter edge routers and NC2 bare-metal hypervisors, bypassing Azure GatewaySubnet CPU limits to deliver line-rate 10Gbps to 100Gbps throughput with sub-millisecond network latency.',
+      role: 'Enterprise Hybrid Cloud Border Transit',
+      trafficDirection: 'Bidirectional on-premises to NC2 cluster traffic',
+      highAvailability: 'Dual active/active ExpressRoute carrier circuits with sub-second BGP failover.',
+      sizingAndConstraints: 'Requires UltraPerformance or ErGw3AZ gateway SKU for line-rate FastPath routing.',
+      portsTable: [
+        { protocol: 'TCP', port: '179', source: 'On-Premises Edge', destination: 'Azure MSEE Edge', purpose: 'BGP dynamic route advertisement' }
+      ],
+      troubleshootingCli: [
+        { command: 'az network express-route list -g <rg> -o table', context: 'Verify ExpressRoute circuit operational status and provisioning state', expectedOutput: 'ProvisioningState: Succeeded, CircuitState: Enabled' }
+      ],
+      packetFlowSummary: 'Packets traverse dedicated fiber -> land on MSEE router -> FastPath hardware switches frame directly to NC2 bare-metal host interfaces.'
+    }
+  ],
+
+  // NC2 Design 2: Nutanix Move Automated Cross-Hypervisor Migration Pipeline (vSphere to AHV)
+  'nc2-design-2': [
+    {
+      id: 'nc2-2-move-appliance',
+      name: 'Nutanix Move Appliance & Orchestration Engine',
+      category: 'Appliance',
+      badge: 'Move Migration Engine',
+      xPercent: 50,
+      yPercent: 44,
+      shortDescription: 'Linux-based migration coordinator managing vCenter snapshots, byte delta streaming, and cutover execution.',
+      fullDescription: 'Nutanix Move deploys as a turnkey virtual appliance. It connects via REST APIs to VMware vCenter and Nutanix Prism, orchestrating batch migration waves, tracking background replication progress, and automating guest OS readiness verification with minimal administrative touch.',
+      role: 'Central Cross-Hypervisor Migration Controller',
+      trafficDirection: 'Control-plane orchestration with vCenter and destination NC2 Prism',
+      highAvailability: 'Stateless job persistence; automatically resumes replication streams following transient WAN disruptions.',
+      sizingAndConstraints: 'Single appliance handles up to 64 concurrent VM replication streams across 1Gbps to 40Gbps WAN pipelines.',
+      portsTable: [
+        { protocol: 'TCP', port: '443', source: 'Move Appliance', destination: 'vCenter Server', purpose: 'vSphere API snapshot and inventory queries' },
+        { protocol: 'TCP', port: '9440', source: 'Move Appliance', destination: 'Nutanix Prism', purpose: 'Prism Element / Central storage target APIs' }
+      ],
+      troubleshootingCli: [
+        { command: 'move-cli migration-plan list', context: 'Query active migration wave status and sync progress', expectedOutput: 'Plan: Wave-1-Databases, State: In-Sync, Lag: < 15s' },
+        { command: 'move-cli status', context: 'Check Move service daemon health', expectedOutput: 'All Move microservices running healthy' }
+      ],
+      packetFlowSummary: 'Move appliance coordinates vCenter snapshot -> reads VMDK blocks -> encrypts stream -> pushes directly into destination NC2 CVM storage pool.'
+    },
+    {
+      id: 'nc2-2-cbt-sync',
+      name: 'Agentless Changed Block Tracking (CBT) Delta Sync',
+      category: 'Compute & Cluster',
+      badge: 'CBT Delta Replicator',
+      xPercent: 28,
+      yPercent: 38,
+      shortDescription: 'Continuous byte-level tracking capturing incremental block changes while source VMs remain online in production.',
+      fullDescription: 'Leverages native VMware vSphere Changed Block Tracking (CBT) without requiring any software agents installed inside guest virtual machines. Performs an initial baseline disk seed, followed by scheduled hourly or continuous delta synchronizations that copy only modified disk sectors.',
+      role: 'Non-Disruptive Changed Data Replicator',
+      trafficDirection: 'Outbound replication data stream from on-premises ESXi to NC2 storage',
+      highAvailability: 'Resilient multi-threaded streaming with checksum validation on every transferred sector block.',
+      sizingAndConstraints: 'Minimal ESXi host CPU overhead (< 2%); bandwidth throttling customizable to prevent WAN saturation.',
+      portsTable: [
+        { protocol: 'TCP', port: '902', source: 'Move Appliance', destination: 'ESXi Host', purpose: 'NFC (Network File Copy) block transfer protocol' }
+      ],
+      troubleshootingCli: [
+        { command: 'vim-cmd vmsvc/get.snapshotinfo <vmid>', context: 'Inspect source VM snapshot chain and CBT tracking flag', expectedOutput: 'ctkEnabled: true, Snapshot: Move-Migration-Sync' }
+      ],
+      packetFlowSummary: 'VM writes data -> ESXi CBT tracks changed sector IDs -> Move queries modified blocks -> streams only deltas over ExpressRoute circuit.'
+    },
+    {
+      id: 'nc2-2-virtio-inject',
+      name: 'Automated VirtIO Driver Injection Engine',
+      category: 'Compute & Cluster',
+      badge: 'VirtIO OS Injection',
+      xPercent: 54,
+      yPercent: 20,
+      shortDescription: 'Automatically injects Red Hat / Nutanix VirtIO storage and network drivers into guest Windows and Linux kernels.',
+      fullDescription: 'Prior to cutover, Nutanix Move mounts the target replica disk and injects certified VirtIO-SCSI storage drivers, VirtIO network controllers, and Nutanix Guest Tools (NGT). This eliminates blue-screen (BSOD) stop errors and kernel panics when the VM first powers on on the native AHV hypervisor.',
+      role: 'Guest OS Cross-Hypervisor Translator',
+      trafficDirection: 'Offline disk sector modification on replica storage volume',
+      highAvailability: 'Automatic backup copy of source registry and initramfs files preserved for safety.',
+      sizingAndConstraints: 'Supports Windows Server 2008 R2 through 2025 and all enterprise Linux distributions (RHEL, Ubuntu, SUSE, Debian).',
+      portsTable: [
+        { protocol: 'TCP', port: '443', source: 'Move Appliance', destination: 'Guest VM (Optional)', purpose: 'Guest integration agent verification' }
+      ],
+      troubleshootingCli: [
+        { command: 'move-cli vm verify-drivers --vm-id <id>', context: 'Verify successful installation of VirtIO drivers in target replica disk', expectedOutput: 'VirtIO-SCSI: Injected, VirtIO-Net: Injected, ReadyForBoot: True' }
+      ],
+      packetFlowSummary: 'Move accesses target disk image -> stages VirtIO driver binaries in System32 / initramfs -> updates boot loader registry -> prepares instant AHV boot.'
+    },
+    {
+      id: 'nc2-2-disk-convert',
+      name: 'Disk Controller Conversion (PVSCSI/LSI to VirtIO-SCSI)',
+      category: 'Storage Fabric',
+      badge: 'Controller Translation',
+      xPercent: 68,
+      yPercent: 48,
+      shortDescription: 'Converts legacy VMware Paravirtual SCSI and LSI Logic SAS controllers into high-throughput VirtIO-SCSI.',
+      fullDescription: 'Reconfigures virtual hardware definitions so that disks boot directly onto native AHV VirtIO-SCSI controllers. VirtIO-SCSI provides multi-queue I/O processing, deep queue depths (up to 256 requests per target), and ultra-low CPU latency, maximizing IOPS performance on Azure NVMe storage.',
+      role: 'Virtual Storage Controller Modernizer',
+      trafficDirection: 'Internal virtual hardware translation',
+      highAvailability: 'Preserves original disk UUIDs, volume labels, and partition tables with 100% data integrity.',
+      sizingAndConstraints: 'Supports up to 256 virtual disks per VM and individual disk sizes up to 64 TB.',
+      portsTable: [
+        { protocol: 'Internal', port: 'PCIe', source: 'AHV Hypervisor', destination: 'VirtIO Controller', purpose: 'Hardware-assisted disk I/O virtualization' }
+      ],
+      troubleshootingCli: [
+        { command: 'acli vm.get <vm-name>', context: 'Inspect converted VM hardware bus controller types on AHV', expectedOutput: 'disk_address: bus: scsi, index: 0, model: virtio-scsi' }
+      ],
+      packetFlowSummary: 'Guest operating system issues SCSI read/write -> processed via multi-queue VirtIO-SCSI driver -> executed directly by AHV kernel.'
+    },
+    {
+      id: 'nc2-2-l2-stretch',
+      name: 'Flow Layer 2 Subnet Extension & IP Address Preservation',
+      category: 'Network & Routing',
+      badge: 'Flow L2 Stretch Gateway',
+      xPercent: 82,
+      yPercent: 74,
+      shortDescription: 'Extends enterprise on-premises broadcast VLANs into Azure VNet, preserving existing static IP and MAC addresses.',
+      fullDescription: 'Nutanix Flow L2 Network Extension deploys an encrypted bridge pair between on-premises VMware switches and Azure NC2 Flow networks. Virtual machines cut over into Azure keep their original IP addresses, subnet masks, and default gateways, eliminating application downtime and complex DNS re-addressing during multi-wave migration.',
+      role: 'Cross-Cloud Broadcast Domain Bridge',
+      trafficDirection: 'Encapsulated Layer-2 broadcast and unicast frame bridging',
+      highAvailability: 'Active/Standby gateway appliance pair with automated keepalive heartbeat.',
+      sizingAndConstraints: 'Supports multiple stretched VLANs per appliance; up to 10 Gbps line-rate forwarding over ExpressRoute.',
+      portsTable: [
+        { protocol: 'UDP', port: '4789', source: 'On-Prem L2 Gateway', destination: 'NC2 L2 Gateway', purpose: 'VXLAN encapsulated Layer-2 frame tunnel' }
+      ],
+      troubleshootingCli: [
+        { command: 'flow-l2-cli tunnel status', context: 'Inspect status of stretched Layer 2 subnet gateway bridge', expectedOutput: 'Tunnel: UP, Stretched VLANs: [100, 101, 102], Packet Loss: 0%' }
+      ],
+      packetFlowSummary: 'Non-migrated VM on-prem communicates with migrated VM on Azure -> frames encapsulated in VXLAN -> decapsulated on NC2 -> delivered without changing IP addresses.'
+    }
+  ],
+
+  // NC2 Design 3: Distributed Storage Fabric (DSF), Resiliency & Multi-Region BCDR
+  'nc2-design-3': [
+    {
+      id: 'nc2-3-dsf-pool',
+      name: 'Distributed Storage Fabric (DSF) Unified Datastore',
+      category: 'Storage Fabric',
+      badge: 'DSF Global Storage',
+      xPercent: 24,
+      yPercent: 48,
+      shortDescription: 'Enterprise software-defined hyperconverged storage pooling all physical Azure bare-metal NVMe SSDs.',
+      fullDescription: 'Nutanix DSF aggregates physical NVMe solid-state storage across all cluster nodes into a single, shared, fault-tolerant storage pool. All virtual disks, snapshots, and containers draw from this elastic namespace, featuring sub-millisecond read/write latency and automatic load balancing across all node controllers.',
+      role: 'Global Hyperconverged Storage Fabric',
+      trafficDirection: 'Cluster-wide distributed storage block I/O',
+      highAvailability: 'Continuous self-healing; surviving nodes automatically rebuild degraded data blocks without user intervention.',
+      sizingAndConstraints: 'Delivers up to millions of aggregate IOPS across enterprise AN64 / AN100 bare-metal clusters.',
+      portsTable: [
+        { protocol: 'TCP', port: '2020', source: 'CVM Stargate', destination: 'CVM Stargate', purpose: 'Block-level replication and storage pooling' }
+      ],
+      troubleshootingCli: [
+        { command: 'ncli container list', context: 'List active storage containers, usable capacity, and storage efficiency', expectedOutput: 'Container: default-storage-pool, Free Space: 68.4 TB, Dedup: Enabled' },
+        { command: 'curator_cli get_task_status', context: 'Inspect background background storage optimization tasks', expectedOutput: 'Curator: Idle, Disk Map Rebalance: Complete' }
+      ],
+      packetFlowSummary: 'VM issues storage write -> committed immediately to local NVMe flash -> mirrored synchronously across cluster before acknowledging guest OS.'
+    },
+    {
+      id: 'nc2-3-rf2-rf3',
+      name: 'Replication Factor 2 (RF2) & Replication Factor 3 (RF3) Failure Domains',
+      category: 'Storage Fabric',
+      badge: 'RF2 / RF3 Resiliency',
+      xPercent: 42,
+      yPercent: 28,
+      shortDescription: 'Configurable data redundancy policies tolerating one (RF2) or two (RF3) simultaneous physical node outages.',
+      fullDescription: 'RF2 writes 2 independent copies of every data block across separate physical nodes; RF3 writes 3 copies across 3 distinct bare-metal nodes. With RF3 enabled, an enterprise NC2 cluster can withstand two simultaneous physical server failures or Azure rack maintenance events with zero downtime and zero data loss.',
+      role: 'Storage Fault-Tolerance & Failure Domain Engine',
+      trafficDirection: 'Synchronous write mirroring across physical failure domains',
+      highAvailability: 'Guarantees continuous read/write accessibility during multiple simultaneous node crashes.',
+      sizingAndConstraints: 'RF2 requires minimum 3 nodes; RF3 requires minimum 5 nodes in the cluster.',
+      portsTable: [
+        { protocol: 'TCP', port: '2020', source: 'Local CVM', destination: 'Replica CVM Nodes', purpose: 'Synchronous multi-node block commit' }
+      ],
+      troubleshootingCli: [
+        { command: 'ncli cluster get-redundancy-state', context: 'Inspect current cluster data replication factor and tolerance state', expectedOutput: 'Desired Redundancy: 3, Current Redundancy: 3, Status: OK' }
+      ],
+      packetFlowSummary: 'Write request arrives -> CVM calculates striping hash -> writes Block A to Node 1, Block B to Node 2, Block C to Node 3 simultaneously.'
+    },
+    {
+      id: 'nc2-3-dedup-ecx',
+      name: 'Inline Deduplication, Compression & EC-X Erasure Coding',
+      category: 'Storage Fabric',
+      badge: 'Inline EC-X Efficiency',
+      xPercent: 40,
+      yPercent: 62,
+      shortDescription: 'Hardware-assisted inline storage reduction delivering 2.5x to 4x data capacity savings on Azure bare-metal storage.',
+      fullDescription: 'Combines real-time LZ4 compression, SHA-256 fingerprint deduplication, and Post-Process Erasure Coding (EC-X). Cold data strips across nodes using parity calculations (e.g. 4:1 or 4:2), reclaiming up to 75% of storage capacity while maintaining full RF3 resiliency standards.',
+      role: 'Storage Capacity Optimization & Reduction',
+      trafficDirection: 'Inline I/O processing and background batch parity generation',
+      highAvailability: 'Full data recovery from parity blocks if physical nodes experience drive failure.',
+      sizingAndConstraints: 'Zero penalty on transactional write latency; offloaded to idle CPU cores.',
+      portsTable: [
+        { protocol: 'Internal', port: 'Memory', source: 'Stargate Daemon', destination: 'RAM Cache', purpose: 'High-speed fingerprint hash lookup table' }
+      ],
+      troubleshootingCli: [
+        { command: 'ncli container get name=<name>', context: 'Check overall compression and deduplication ratios', expectedOutput: 'Savings: Compression: 1.8x, Deduplication: 1.4x, EC-X: 1.3x (Overall: 3.2x)' }
+      ],
+      packetFlowSummary: 'Ingress data chunked -> SHA-256 hash computed -> matching fingerprints referenced without duplicate writes -> cold blocks coded with EC-X parity.'
+    },
+    {
+      id: 'nc2-3-leap-dr',
+      name: 'Nutanix Leap Disaster Recovery Runbooks & Orchestration',
+      category: 'Appliance',
+      badge: 'Leap DR Runbooks',
+      xPercent: 54,
+      yPercent: 82,
+      shortDescription: 'Policy-driven business continuity orchestrating automated cross-region and hybrid DR failover plans.',
+      fullDescription: 'Nutanix Leap centralizes Protection Policies and Recovery Plans. Features granular RPO configurations (down to 1 minute or near-zero with synchronous replication), boot ordering with multi-tier execution groups, automated IP remapping, and 1-click non-disruptive DR test bubble sandbox validation.',
+      role: 'Disaster Recovery Runbook Orchestration Engine',
+      trafficDirection: 'Cross-region snapshot replication and failover orchestration',
+      highAvailability: 'Bi-directional replication supporting automated failover and 1-click planned reprotect.',
+      sizingAndConstraints: 'Orchestrates failover across Azure regions (e.g. East US to West US) or on-prem to Azure NC2.',
+      portsTable: [
+        { protocol: 'TCP', port: '9440', source: 'Primary Leap Engine', destination: 'Recovery Site Prism Central', purpose: 'DR replication sync and runbook execution' }
+      ],
+      troubleshootingCli: [
+        { command: 'leap-cli recovery-plan test --plan-id <id>', context: 'Execute non-disruptive DR test run in isolated Azure test bubble', expectedOutput: 'Execution: Success, VMs Powered On: 48/48, Test Bubble Verified' }
+      ],
+      packetFlowSummary: 'Protection policy triggers -> snapshot captured -> replicated to secondary Azure region -> Leap executes automated power-on sequencing upon failover.'
+    },
+    {
+      id: 'nc2-3-blob-tiering',
+      name: 'Azure Blob Storage Snapshot Tiering & Cold Archival',
+      category: 'Storage Fabric',
+      badge: 'Azure Blob Cold Tier',
+      xPercent: 88,
+      yPercent: 80,
+      shortDescription: 'Automated lifecycle management moving stale snapshots and historical backups to cost-efficient Azure Blob Storage.',
+      fullDescription: 'Integrates native Azure Blob storage accounts as external storage targets. Historical snapshots older than designated retention thresholds are transparently archived from high-cost local NVMe drives into Azure Cool or Cold Blob storage, cutting long-term retention storage costs by up to 80%.',
+      role: 'Cost-Optimized Cloud Object Storage Tier',
+      trafficDirection: 'Outbound snapshot archival over Azure internal backbone',
+      highAvailability: 'Geo-redundant storage (GRS) replication across multiple Azure regions.',
+      sizingAndConstraints: 'Virtually unlimited scale-out capacity; sub-second pointer retrieval when restoring historical snapshots.',
+      portsTable: [
+        { protocol: 'HTTPS', port: '443', source: 'CVM Storage Pool', destination: 'Azure Blob Storage Endpoint', purpose: 'Secure REST API object streaming' }
+      ],
+      troubleshootingCli: [
+        { command: 'az storage account show -g <rg> -n <storage-account> --query "primaryEndpoints.blob"', context: 'Verify connectivity to Azure Blob archive tier', expectedOutput: 'https://nc2archive01.blob.core.windows.net/' }
+      ],
+      packetFlowSummary: 'Retention scheduler flags snapshot -> CVM deduplicates object -> streams encrypted blocks over Azure private backbone into Azure Blob container.'
+    }
   ]
 };
 
@@ -1978,7 +2295,10 @@ const IMAGE_TO_DESIGN_KEY: Record<string, string> = {
   'srm_test_bubble': 'srm-design-3',
   'aria_flow_discovery': 'aria-design-1',
   'aria_network_microseg': 'aria-design-2',
-  'aria_dfw_microseg': 'aria-design-3'
+  'aria_dfw_microseg': 'aria-design-3',
+  'nutanix_nc2_azure_architecture': 'nc2-design-1',
+  'nutanix_move_migration': 'nc2-design-2',
+  'nutanix_dsf_storage_bcdr': 'nc2-design-3'
 };
 
 // Helper function to resolve hotspots for any specific design or image
